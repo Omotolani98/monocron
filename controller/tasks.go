@@ -18,7 +18,6 @@ import (
 	"encore.app/controller/db"
 	"encore.dev/storage/sqldb"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/robfig/cron/v3"
 	"gopkg.in/yaml.v3"
 )
@@ -28,7 +27,7 @@ var (
 		Migrations: "./db/migrations",
 	})
 
-	pgxdb = sqldb.Driver[*pgxpool.Pool](monocronDB)
+	pgxdb = sqldb.Driver(monocronDB)
 	q     = db.New(pgxdb)
 )
 
@@ -274,11 +273,19 @@ func upsertAndPlan(ctx context.Context, tf TaskFile) error {
 		return err
 	}
 
-	// Enqueue runs.
-	for _, rc := range plan {
-		_, _ = q.EnqueueRun(ctx, EnqueueParams(t.ID, rc))
-	}
-	return nil
+    // Enqueue runs and publish to runners.
+    for _, rc := range plan {
+        run, _ := q.EnqueueRun(ctx, EnqueueParams(t.ID, rc))
+        _ = publishRun(ctx, RunMessage{
+            RunID:       run.ID,
+            TaskID:      t.ID,
+            TaskName:    tf.Metadata.Name,
+            ScheduledAt: rc.ScheduledAt,
+            Source:      rc.Source,
+            Executor:    jsonRaw(execJSON),
+        })
+    }
+    return nil
 }
 
 // QueriesUpsertParams converts TaskFile to db.UpsertTaskParams.
