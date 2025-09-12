@@ -36,11 +36,11 @@ type ghPushEvent struct {
 	Before     string `json:"before"`
 	After      string `json:"after"`
 	Repository struct {
-		FullName string `json:"full_name"` // "owner/repo"
+		FullName string `json:"full_name"`
 		Private  bool   `json:"private"`
 	} `json:"repository"`
 	HeadCommit struct {
-		ID string `json:"id"` // head sha
+		ID string `json:"id"`
 	} `json:"head_commit"`
 	Commits []struct {
 		Added    []string `json:"added"`
@@ -52,8 +52,8 @@ type ghPushEvent struct {
 type fetchedFile struct {
 	Path          string `json:"path"`
 	RefSHA        string `json:"ref_sha"`
-	Content       string `json:"content"`        // raw text (UTF-8)
-	ContentSHA256 string `json:"content_sha256"` // hex-encoded
+	Content       string `json:"content"`
+	ContentSHA256 string `json:"content_sha256"`
 }
 
 type webhookResponse struct {
@@ -83,7 +83,6 @@ func Webhook(ctx context.Context, event *ghPushEvent) (*webhookResponse, error) 
 		head = "main"
 	}
 
-	// Collect YAML paths from commits (added/modified only).
 	paths := collectYamlPaths(event)
 	if len(paths) == 0 {
 		// Nothing to fetch; return minimal response.
@@ -94,7 +93,6 @@ func Webhook(ctx context.Context, event *ghPushEvent) (*webhookResponse, error) 
 	for p := range paths {
 		content, err := fetchRepoFile(ctx, owner, repo, head, p, event.Repository.Private)
 		if err != nil || content == "" {
-			// Skip files that can't be fetched (deleted or not present at head).
 			continue
 		}
 		sum := sha256.Sum256([]byte(content))
@@ -106,7 +104,6 @@ func Webhook(ctx context.Context, event *ghPushEvent) (*webhookResponse, error) 
 		}
 		files = append(files, ff)
 
-		// Parse YAML into TaskFile and persist + enqueue runs.
 		var tf TaskFile
 		if err := yaml.Unmarshal([]byte(content), &tf); err == nil && tf.Metadata.Name != "" {
 			_ = upsertAndPlan(ctx, tf)
@@ -146,13 +143,10 @@ func collectYamlPaths(e *ghPushEvent) map[string]struct{} {
 		for _, p := range c.Modified {
 			add(p)
 		}
-		// removed files are ignored since they cannot be fetched at head if deleted
 	}
 	return out
 }
 
-// fetchRepoFile fetches the file content at given ref. It supports both public and private repos.
-// If GITHUB_TOKEN is set, it uses the GitHub API which works for private repos.
 func fetchRepoFile(ctx context.Context, owner, repo, ref, path string, isPrivate bool) (string, error) {
 	client := &http.Client{Timeout: 5 * time.Second}
 	token := strings.TrimSpace(os.Getenv("GITHUB_TOKEN"))
@@ -218,8 +212,6 @@ func fetchRepoFile(ctx context.Context, owner, repo, ref, path string, isPrivate
 	return string(b), nil
 }
 
-// ---- Task YAML, planning, and persistence helpers ----
-
 // TaskFile mirrors the expected YAML schema.
 type TaskFile struct {
 	APIVersion string `yaml:"apiVersion" json:"apiVersion"`
@@ -243,12 +235,10 @@ type TaskFile struct {
 
 type runCandidate struct {
 	ScheduledAt time.Time
-	Source      string // "regular" | "catchup"
+	Source      string
 }
 
-// upsertAndPlan upserts the task and enqueues runs if a DB is available.
 func upsertAndPlan(ctx context.Context, tf TaskFile) error {
-	// Prepare UpsertTask params.
 	catchupWindow := time.Duration(0)
 	if tf.Spec.CatchupWindow != "" {
 		if d, err := time.ParseDuration(tf.Spec.CatchupWindow); err == nil {
@@ -273,22 +263,21 @@ func upsertAndPlan(ctx context.Context, tf TaskFile) error {
 		return err
 	}
 
-    // Enqueue runs and publish to runners.
-    for _, rc := range plan {
-        run, _ := q.EnqueueRun(ctx, EnqueueParams(t.ID, rc))
-        _ = publishRun(ctx, RunMessage{
-            RunID:       run.ID,
-            TaskID:      t.ID,
-            TaskName:    tf.Metadata.Name,
-            ScheduledAt: rc.ScheduledAt,
-            Source:      rc.Source,
-            Executor:    jsonRaw(execJSON),
-        })
-    }
-    return nil
+	// Enqueue runs and publish to runners.
+	for _, rc := range plan {
+		run, _ := q.EnqueueRun(ctx, EnqueueParams(t.ID, rc))
+		_ = publishRun(ctx, RunMessage{
+			RunID:       run.ID,
+			TaskID:      t.ID,
+			TaskName:    tf.Metadata.Name,
+			ScheduledAt: rc.ScheduledAt,
+			Source:      rc.Source,
+			Executor:    jsonRaw(execJSON),
+		})
+	}
+	return nil
 }
 
-// QueriesUpsertParams converts TaskFile to db.UpsertTaskParams.
 func QueriesUpsertParams(tf TaskFile, catchupWindow time.Duration, execJSON []byte) db.UpsertTaskParams {
 	return db.UpsertTaskParams{
 		Name:              tf.Metadata.Name,
@@ -303,7 +292,6 @@ func QueriesUpsertParams(tf TaskFile, catchupWindow time.Duration, execJSON []by
 	}
 }
 
-// planRuns computes the next run and catchup runs from last scheduled.
 func planRuns(tf TaskFile, now time.Time, lastScheduled *time.Time) ([]runCandidate, error) {
 	spec := tf.Spec
 
@@ -355,13 +343,9 @@ func planRuns(tf TaskFile, now time.Time, lastScheduled *time.Time) ([]runCandid
 	return runs, nil
 }
 
-// EnqueueParams maps runCandidate to db.EnqueueRunParams.
 func EnqueueParams(taskID uuid.UUID, rc runCandidate) db.EnqueueRunParams {
 	return db.EnqueueRunParams{TaskID: taskID, ScheduledAt: rc.ScheduledAt, Status: "QUEUED", Source: rc.Source}
 }
-
-// // getQueries returns a DB query interface if configured. Placeholder for integration.
-// func getQueries() *db.Queries { return nil }
 
 func zerodef[T ~string](v T, def T) T {
 	if v == "" {

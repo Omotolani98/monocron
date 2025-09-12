@@ -1,0 +1,56 @@
+{
+  "$schema": "https://encore.dev/schemas/infra.schema.json",
+  "metadata": {
+    "app_id": "monocron-wbv2",
+    "env_name": "staging",
+    "env_type": "test",
+    "cloud": "self_host",
+    "base_url": {"$env": "BASE_URL"}
+  },
+  "sql_servers": [
+    {
+      "host": {"$env": "PGHOST"},
+      "databases": {
+        "monocron": {
+          "username": {"$env": "PGUSER"},
+          "password": {"$env": "PGPASSWORD"}
+        }
+      }
+    }
+  ],
+  "service_discovery": {
+    "controller": {
+      "base_url": {"$env": "CONTROLLER_BASE_URL"}
+    },
+    "runner": {
+      "base_url": {"$env": "RUNNER_BASE_URL"}
+    }
+  },
+  "graceful_shutdown": {"total": 30},
+  "pubsub": [
+    {
+      "type": "gcp_pubsub",
+      "project_id": {"$env": "PUBSUB_PROJECT"},
+      "topics": {
+        "run-dispatch": {
+          "name": {"$env": "TOPIC_RUN_DISPATCH"},
+          "subscriptions": {
+            "runner": {"name": {"$env": "SUB_RUNNER"}}
+          }
+        },
+        "run-logs": {
+          "name": {"$env": "TOPIC_RUN_LOGS"},
+          "subscriptions": {
+            "controller-logs": {"name": {"$env": "SUB_CONTROLLER_LOGS"}}
+          }
+        },
+        "run-status": {
+          "name": {"$env": "TOPIC_RUN_STATUS"},
+          "subscriptions": {
+            "controller-status": {"name": {"$env": "SUB_CONTROLLER_STATUS"}}
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,11 +1,11 @@
 package controller
 
 import (
-	"context"
-	"time"
+    "context"
+    "time"
 
-	"encore.dev/pubsub"
-	"github.com/google/uuid"
+    "encore.dev/pubsub"
+    "github.com/google/uuid"
 )
 
 // RunMessage is published for runs that should be executed by any runner.
@@ -29,6 +29,26 @@ var RunDispatchTopic = pubsub.NewTopic[RunMessage]("run-dispatch", pubsub.TopicC
 
 // publishRun broadcasts a run message to all runners (fan-out with group consumption).
 func publishRun(ctx context.Context, msg RunMessage) error {
-	_, err := RunDispatchTopic.Publish(ctx, msg)
-	return err
+    _, err := RunDispatchTopic.Publish(ctx, msg)
+    return err
 }
+
+// LogMessage and StatusMessage are sent from runners back to controller.
+type LogMessage struct {
+    RunID    uuid.UUID `json:"run_id"`
+    LoggedAt time.Time `json:"logged_at"`
+    Line     string    `json:"line"`
+}
+
+type StatusMessage struct {
+    RunID      uuid.UUID `json:"run_id"`
+    Status     string    `json:"status"` // RUNNING|COMPLETED|FAILED
+    Error      string    `json:"error,omitempty"`
+    OccurredAt time.Time `json:"occurred_at"`
+}
+
+//encore:topic name=run-logs
+var RunLogsTopic = pubsub.NewTopic[LogMessage]("run-logs", pubsub.TopicConfig{DeliveryGuarantee: pubsub.AtLeastOnce})
+
+//encore:topic name=run-status
+var RunStatusTopic = pubsub.NewTopic[StatusMessage]("run-status", pubsub.TopicConfig{DeliveryGuarantee: pubsub.AtLeastOnce})
