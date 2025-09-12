@@ -24,11 +24,11 @@ import (
 )
 
 var (
-	bookingDB = sqldb.NewDatabase("booking", sqldb.DatabaseConfig{
+	monocronDB = sqldb.NewDatabase("monocron", sqldb.DatabaseConfig{
 		Migrations: "./db/migrations",
 	})
 
-	pgxdb = sqldb.Driver[*pgxpool.Pool](bookingDB)
+	pgxdb = sqldb.Driver[*pgxpool.Pool](monocronDB)
 	q     = db.New(pgxdb)
 )
 
