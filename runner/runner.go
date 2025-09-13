@@ -48,3 +48,48 @@ func publishStatus(ctx context.Context, runID uuid.UUID, status, errStr string) 
     _, err := controller.RunStatusTopic.Publish(ctx, controller.StatusMessage{RunID: runID, Status: status, Error: errStr, OccurredAt: time.Now().UTC()})
     return err
 }
+
+// --- RPC endpoint for daemon push model ---
+
+// DaemonEvent represents an event sent by the local monocrond to the runner.
+type DaemonEvent struct {
+    Type   string           `json:"type"` // "log" | "status"
+    RunID  string           `json:"run_id"`
+    Log    *DaemonLog       `json:"log,omitempty"`
+    Status *DaemonStatus    `json:"status,omitempty"`
+}
+
+type DaemonLog struct {
+    Line string    `json:"line"`
+    Std  string    `json:"std"`
+    At   time.Time `json:"at"`
+}
+
+type DaemonStatus struct {
+    Status string    `json:"status"`
+    Error  string    `json:"error,omitempty"`
+    Code   int       `json:"code,omitempty"`
+    At     time.Time `json:"at"`
+}
+
+//encore:api public method=POST path=/daemon/event
+func ReceiveDaemonEvent(ctx context.Context, ev *DaemonEvent) error {
+    if ev == nil {
+        return nil
+    }
+    rid, err := uuid.Parse(ev.RunID)
+    if err != nil {
+        return fmt.Errorf("invalid run_id: %w", err)
+    }
+    switch ev.Type {
+    case "log":
+        if ev.Log != nil {
+            return publishLog(ctx, rid, ev.Log.Line)
+        }
+    case "status":
+        if ev.Status != nil {
+            return publishStatus(ctx, rid, ev.Status.Status, ev.Status.Error)
+        }
+    }
+    return nil
+}
