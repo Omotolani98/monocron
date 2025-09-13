@@ -3,14 +3,20 @@ package runner
 
 import (
     "context"
+    "encoding/json"
     "fmt"
+    "os"
     "time"
 
+    monocrond "encore.app/monocrond"
     "encore.app/controller"
     "encore.dev/pubsub"
     "github.com/charmbracelet/log"
     "github.com/google/uuid"
+    "google.golang.org/grpc"
 )
+
+const grpcMethodExecute = "/monocrond.Daemon/Execute"
 
 var _ = pubsub.NewSubscription(
 	controller.RunDispatchTopic,
@@ -23,19 +29,51 @@ var _ = pubsub.NewSubscription(
 // HandleRun subscribes to run dispatches. Multiple runner instances can use the
 // same consumer group for load-balanced consumption in heterogeneous environments.
 func HandleRun(ctx context.Context, msg controller.RunMessage) error {
-    // Mark RUNNING
-    _ = publishStatus(ctx, msg.RunID, "RUNNING", "")
+    // Connect to local monocrond (JSON gRPC stream)
+    addr := getenv("MONOCROND_ADDR", ":50051")
+    cc, err := grpc.DialContext(ctx, addr, grpc.WithInsecure(), grpc.WithBlock(), grpc.WithDefaultCallOptions(grpc.ForceCodec(monocrond.JsonCodecForClient())))
+    if err != nil {
+        _ = publishStatus(ctx, msg.RunID, "FAILED", fmt.Sprintf("dial monocrond: %v", err))
+        return nil
+    }
+    defer cc.Close()
 
-    // TODO: call local monocrond and stream its output.
-    // Simulate execution with a few log lines.
-    for i := 1; i <= 3; i++ {
-        _ = publishLog(ctx, msg.RunID, fmt.Sprintf("processing step %d for %s", i, msg.TaskName))
-        time.Sleep(100 * time.Millisecond)
+    // Start Execute server stream
+    desc := &grpc.StreamDesc{ServerStreams: true}
+    stream, err := cc.NewStream(ctx, desc, grpcMethodExecute)
+    if err != nil {
+        _ = publishStatus(ctx, msg.RunID, "FAILED", fmt.Sprintf("start stream: %v", err))
+        return nil
     }
 
-    // Mark COMPLETED (or FAILED on error)
-    _ = publishStatus(ctx, msg.RunID, "COMPLETED", "")
-    log.Info("run completed", "run_id", msg.RunID)
+    // Build ExecuteRequest from executor payload
+    cmd := extractCommand([]byte(msg.Executor))
+    req := &monocrond.ExecuteRequest{RunID: msg.RunID.String(), TaskName: msg.TaskName, Command: cmd}
+    if err := stream.SendMsg(req); err != nil {
+        _ = publishStatus(ctx, msg.RunID, "FAILED", fmt.Sprintf("send req: %v", err))
+        _ = stream.CloseSend()
+        return nil
+    }
+    _ = stream.CloseSend()
+
+    // Forward daemon events to controller topics
+    for {
+        var ev monocrond.ExecuteEvent
+        if err := stream.RecvMsg(&ev); err != nil {
+            break
+        }
+        switch ev.Type {
+        case "status":
+            if ev.Status != nil {
+                _ = publishStatus(ctx, msg.RunID, ev.Status.Status, ev.Status.Error)
+            }
+        case "log":
+            if ev.Log != nil {
+                _ = publishLog(ctx, msg.RunID, ev.Log.Line)
+            }
+        }
+    }
+    log.Info("run finished", "run_id", msg.RunID)
     return nil
 }
 
@@ -47,6 +85,16 @@ func publishLog(ctx context.Context, runID uuid.UUID, line string) error {
 func publishStatus(ctx context.Context, runID uuid.UUID, status, errStr string) error {
     _, err := controller.RunStatusTopic.Publish(ctx, controller.StatusMessage{RunID: runID, Status: status, Error: errStr, OccurredAt: time.Now().UTC()})
     return err
+}
+
+func getenv(k, def string) string { if v := os.Getenv(k); v != "" { return v }; return def }
+
+// extractCommand expects executor JSON like {"command":["/bin/echo","hello"]}
+func extractCommand(raw []byte) []string {
+    var v struct{ Command []string `json:"command"` }
+    _ = json.Unmarshal(raw, &v)
+    if len(v.Command) == 0 { return []string{"/bin/echo", "no-executor-command"} }
+    return v.Command
 }
 
 // --- RPC endpoint for daemon push model ---
