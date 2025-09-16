@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package daemon.v1;
+
+option go_package = "encore.app/gen/daemon/v1;daemonv1";
+
+import "google/protobuf/timestamp.proto";
+
+// DaemonService provides remote execution on the target machine.
+service DaemonService {
+  // Execute starts a job and streams back events until completion.
+  rpc Execute(ExecuteRequest) returns (stream ExecuteResponse);
+}
+
+message ExecuteRequest {
+  string run_id = 1;
+  string task_name = 2;
+  repeated string command = 3;     // [bin, arg1, arg2, ...]
+  repeated string env = 4;         // KEY=VALUE
+  string working_dir = 5;
+}
+
+message ExecuteResponse {
+  oneof event {
+    LogEvent log = 1;
+    StatusEvent status = 2;
+  }
+}
+
+message LogEvent {
+  google.protobuf.Timestamp at = 1;
+  string line = 2;
+  string std = 3; // out|err
+}
+
+message StatusEvent {
+  google.protobuf.Timestamp at = 1;
+  string status = 2; // RUNNING|COMPLETED|FAILED
+  string error = 3;
+  int32 code = 4;
+}
+

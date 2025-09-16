@@ -141,10 +141,104 @@ func (q *Queries) ListPendingRuns(ctx context.Context) ([]Run, error) {
 	return items, nil
 }
 
+const listRecentRuns = `-- name: ListRecentRuns :many
+SELECT r.id, r.task_id, t.name AS task_name, r.scheduled_at, r.status, r.source
+FROM runs r
+JOIN tasks t ON t.id = r.task_id
+ORDER BY r.scheduled_at DESC
+LIMIT $1
+`
+
+type ListRecentRunsRow struct {
+	ID          uuid.UUID `json:"id"`
+	TaskID      uuid.UUID `json:"task_id"`
+	TaskName    string    `json:"task_name"`
+	ScheduledAt time.Time `json:"scheduled_at"`
+	Status      string    `json:"status"`
+	Source      string    `json:"source"`
+}
+
+func (q *Queries) ListRecentRuns(ctx context.Context, limit int32) ([]ListRecentRunsRow, error) {
+	rows, err := q.db.Query(ctx, listRecentRuns, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRecentRunsRow
+	for rows.Next() {
+		var i ListRecentRunsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.TaskID,
+			&i.TaskName,
+			&i.ScheduledAt,
+			&i.Status,
+			&i.Source,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRunsByStatus = `-- name: ListRunsByStatus :many
+SELECT r.id, r.task_id, t.name AS task_name, r.scheduled_at, r.status, r.source
+FROM runs r
+JOIN tasks t ON t.id = r.task_id
+WHERE r.status = $1
+ORDER BY r.scheduled_at DESC
+LIMIT $2
+`
+
+type ListRunsByStatusParams struct {
+	Status string `json:"status"`
+	Limit  int32  `json:"limit"`
+}
+
+type ListRunsByStatusRow struct {
+	ID          uuid.UUID `json:"id"`
+	TaskID      uuid.UUID `json:"task_id"`
+	TaskName    string    `json:"task_name"`
+	ScheduledAt time.Time `json:"scheduled_at"`
+	Status      string    `json:"status"`
+	Source      string    `json:"source"`
+}
+
+func (q *Queries) ListRunsByStatus(ctx context.Context, arg ListRunsByStatusParams) ([]ListRunsByStatusRow, error) {
+	rows, err := q.db.Query(ctx, listRunsByStatus, arg.Status, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRunsByStatusRow
+	for rows.Next() {
+		var i ListRunsByStatusRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.TaskID,
+			&i.TaskName,
+			&i.ScheduledAt,
+			&i.Status,
+			&i.Source,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const markAsRunning = `-- name: MarkAsRunning :exec
 UPDATE runs
 SET status = 'RUNNING'
-WHERE id = $1 AND status = "QUEUED"
+WHERE id = $1 AND status = 'QUEUED'
 `
 
 func (q *Queries) MarkAsRunning(ctx context.Context, id uuid.UUID) error {

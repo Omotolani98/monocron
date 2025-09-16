@@ -30,6 +30,14 @@ type Run struct {
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 }
 
+type Runner struct {
+	ID        uuid.UUID `json:"id"`
+	Kind      string    `json:"kind"`
+	Status    string    `json:"status"`
+	LastSeen  time.Time `json:"last_seen"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 type Task struct {
 	ID                uuid.UUID          `json:"id"`
 	Name              string             `json:"name"`

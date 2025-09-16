@@ -36,10 +36,25 @@ WHERE id = $1;
 -- name: MarkAsRunning :exec
 UPDATE runs
 SET status = 'RUNNING'
-WHERE id = $1 AND status = "QUEUED";
+WHERE id = $1 AND status = 'QUEUED';
 
 -- name: MarkRunFailed :exec
 UPDATE runs
 SET status = 'FAILED',
     finished_at = NOW()
 WHERE id = $1;
+
+-- name: ListRecentRuns :many
+SELECT r.id, r.task_id, t.name AS task_name, r.scheduled_at, r.status, r.source
+FROM runs r
+JOIN tasks t ON t.id = r.task_id
+ORDER BY r.scheduled_at DESC
+LIMIT $1;
+
+-- name: ListRunsByStatus :many
+SELECT r.id, r.task_id, t.name AS task_name, r.scheduled_at, r.status, r.source
+FROM runs r
+JOIN tasks t ON t.id = r.task_id
+WHERE r.status = $1
+ORDER BY r.scheduled_at DESC
+LIMIT $2;

@@ -2,77 +2,120 @@
 package runner
 
 import (
-	"context"
-	"encoding/json"
-	"fmt"
-	"os"
-	"time"
+    "context"
+    "encoding/json"
+    "fmt"
+    "net/http"
+    "os"
+    "time"
 
-	"encore.app/controller"
-	monocrond "encore.app/monocrond"
-	"encore.dev/pubsub"
-	"github.com/charmbracelet/log"
-	"github.com/google/uuid"
-	"google.golang.org/grpc"
+    "connectrpc.com/connect"
+    "encore.app/controller"
+    daemonv1 "encore.app/gen/daemon/v1"
+    daemonv1connect "encore.app/gen/daemon/v1/daemonv1connect"
+    "encore.dev/pubsub"
+    "github.com/charmbracelet/log"
+    "github.com/google/uuid"
 )
 
 const grpcMethodExecute = "/monocrond.Daemon/Execute"
 
 var _ = pubsub.NewSubscription(
-	controller.RunDispatchTopic,
-	"run-dispatch",
-	pubsub.SubscriptionConfig[controller.RunMessage]{
-		Handler: HandleRun,
-	},
+    controller.RunDispatchTopic,
+    "run-dispatch",
+    pubsub.SubscriptionConfig[controller.RunMessage]{
+        Handler: HandleRun,
+    },
+)
+
+// Listen for controller control messages for this runner.
+var _ = pubsub.NewSubscription(
+    controller.RunnerControlTopic,
+    "runner-control",
+    pubsub.SubscriptionConfig[controller.RunnerControlMessage]{
+        Handler: HandleControl,
+    },
 )
 
 func HandleRun(ctx context.Context, msg controller.RunMessage) error {
-	// Connect to local monocrond (JSON gRPC stream)
-	addr := getenv("MONOCROND_ADDR", ":50051")
-	cc, err := grpc.NewClient(addr, grpc.WithDefaultCallOptions(grpc.ForceCodec(monocrond.JsonCodecForClient())))
-	if err != nil {
-		_ = publishStatus(ctx, msg.RunID, "FAILED", fmt.Sprintf("dial monocrond: %v", err))
-		return nil
-	}
-	defer cc.Close()
-
-	// Start Execute server stream
-	desc := &grpc.StreamDesc{ServerStreams: true}
-	stream, err := cc.NewStream(ctx, desc, grpcMethodExecute)
+	// Connect to local monocrond (Connect over h2c/HTTP)
+	baseURL := getenv("MONOCROND_BASE_URL", "http://localhost:50051")
+	httpClient := &http.Client{}
+	cli := daemonv1connect.NewDaemonServiceClient(httpClient, baseURL)
+	stream, err := cli.Execute(ctx, connect.NewRequest(&daemonv1.ExecuteRequest{RunId: msg.RunID.String(), TaskName: msg.TaskName, Command: extractCommand([]byte(msg.Executor))}))
 	if err != nil {
 		_ = publishStatus(ctx, msg.RunID, "FAILED", fmt.Sprintf("start stream: %v", err))
 		return nil
 	}
 
-	// Build ExecuteRequest from executor payload
-	cmd := extractCommand([]byte(msg.Executor))
-	req := &monocrond.ExecuteRequest{RunID: msg.RunID.String(), TaskName: msg.TaskName, Command: cmd}
-	if err := stream.SendMsg(req); err != nil {
-		_ = publishStatus(ctx, msg.RunID, "FAILED", fmt.Sprintf("send req: %v", err))
-		_ = stream.CloseSend()
-		return nil
-	}
-	_ = stream.CloseSend()
-
-	// Forward daemon events to controller topics
-	for {
-		var ev monocrond.ExecuteEvent
-		if err := stream.RecvMsg(&ev); err != nil {
-			break
-		}
-		switch ev.Type {
-		case "status":
-			if ev.Status != nil {
-				_ = publishStatus(ctx, msg.RunID, ev.Status.Status, ev.Status.Error)
-			}
-		case "log":
-			if ev.Log != nil {
-				_ = publishLog(ctx, msg.RunID, ev.Log.Line)
-			}
-		}
+    // Forward daemon events to controller topics
+    for stream.Receive() {
+        ev := stream.Msg()
+        if st := ev.GetStatus(); st != nil {
+            _ = publishStatus(ctx, msg.RunID, st.Status, st.Error)
+        }
+        if lg := ev.GetLog(); lg != nil {
+            _ = publishLog(ctx, msg.RunID, lg.Line)
+        }
+    }
+	if err := stream.Err(); err != nil {
+		_ = publishStatus(ctx, msg.RunID, "FAILED", fmt.Sprintf("stream err: %v", err))
 	}
 	log.Info("run finished", "run_id", msg.RunID)
 	return nil
+}
+
+// HandleControl reacts to STOP/KILL messages; in this skeleton we just log.
+func HandleControl(ctx context.Context, msg controller.RunnerControlMessage) error {
+    // Only act if control is directed at this runner instance
+    if myRunnerID != uuid.Nil && msg.RunnerID != myRunnerID {
+        return nil
+    }
+    log.Info("runner control received", "action", msg.Action, "runner_id", msg.RunnerID)
+    return nil
+}
+
+// --- Join + Heartbeat lifecycle ---
+
+var myRunnerID uuid.UUID
+
+func init() {
+    go func() {
+        // Give service a brief moment to start up fully
+        time.Sleep(200 * time.Millisecond)
+        joinAndHeartbeat()
+    }()
+}
+
+func joinAndHeartbeat() {
+    // Determine runner kind
+    kind := getenv("RUNNER_KIND", "docker")
+    // Optional existing id
+    var existing *uuid.UUID
+    if v := os.Getenv("RUNNER_ID"); v != "" {
+        if id, err := uuid.Parse(v); err == nil {
+            existing = &id
+        }
+    }
+    // Join controller
+    resp, err := controller.JoinRunner(context.Background(), &controller.JoinRunnerRequest{RunnerID: existing, Kind: kind})
+    if err != nil {
+        log.Error("join failed", "err", err)
+        return
+    }
+    myRunnerID = resp.RunnerID
+    _ = os.Setenv("RUNNER_ID", myRunnerID.String())
+    hbSec := resp.HeartbeatIntervalSec
+    if hbSec <= 0 { hbSec = 30 }
+    log.Info("joined controller", "runner_id", myRunnerID, "hb_sec", hbSec)
+
+    // Heartbeat loop
+    ticker := time.NewTicker(time.Duration(hbSec) * time.Second)
+    defer ticker.Stop()
+    for {
+        <-ticker.C
+        _ = controller.Heartbeat(context.Background(), &controller.HeartbeatRequest{RunnerID: myRunnerID})
+    }
 }
 
 func publishLog(ctx context.Context, runID uuid.UUID, line string) error {

@@ -24,7 +24,7 @@ type jsonRaw []byte
 
 //encore:topic name=run-dispatch
 var RunDispatchTopic = pubsub.NewTopic[RunMessage]("run-dispatch", pubsub.TopicConfig{
-	DeliveryGuarantee: pubsub.AtLeastOnce,
+    DeliveryGuarantee: pubsub.AtLeastOnce,
 })
 
 // publishRun broadcasts a run message to all runners (fan-out with group consumption).
@@ -52,3 +52,17 @@ var RunLogsTopic = pubsub.NewTopic[LogMessage]("run-logs", pubsub.TopicConfig{De
 
 //encore:topic name=run-status
 var RunStatusTopic = pubsub.NewTopic[StatusMessage]("run-status", pubsub.TopicConfig{DeliveryGuarantee: pubsub.AtLeastOnce})
+
+// Runner control messages (stop/kill) directed at a specific runner.
+type RunnerControlMessage struct {
+    RunnerID uuid.UUID `json:"runner_id"`
+    Action   string    `json:"action"` // STOP | KILL
+}
+
+//encore:topic name=runner-control
+var RunnerControlTopic = pubsub.NewTopic[RunnerControlMessage]("runner-control", pubsub.TopicConfig{DeliveryGuarantee: pubsub.AtLeastOnce})
+
+func publishRunnerControl(ctx context.Context, msg RunnerControlMessage) error {
+    _, err := RunnerControlTopic.Publish(ctx, msg)
+    return err
+}
