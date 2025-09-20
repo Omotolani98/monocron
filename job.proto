@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+option go_package = "pkg/gen";
+
+service Scheduler {
+  rpc AddJob(CmdJobSpec) returns (AddJobResponse);
+  rpc RemoveJob(RemoveJobRequest) returns (RemoveJobResponse);
+  rpc ListJobs(ListJobsRequest) returns (ListJobsResponse);
+}
+
+message CmdJobSpec {
+  string job_id = 1;             // UUIDv7 (client may provide, or server generates)
+  string name   = 2;             // job name
+  repeated string specs = 3;     // cron specs (normalize to one spec per row)
+  repeated string argv  = 4;     // command + args
+  int64 timeout_seconds = 5;     // per-run timeout
+}
+
+message AddJobResponse {
+  string job_id = 1;
+  repeated int32 entry_ids = 2;
+}
+
+message RemoveJobRequest { string job_id = 1; }
+message RemoveJobResponse { bool removed = 1; }
+
+message ListJobsRequest {
+  int32 limit = 1;
+  int32 offset = 2;
+}
+message ListJobsResponse {
+  repeated Job jobs = 1;
+}
+
+message Job {
+  string id          = 1;  // uuid
+  int32 entry_id     = 2;
+  string name        = 3;
+  string status      = 4;
+  string cron_spec   = 5;
+  string scheduled_at = 6; // RFC3339 timestamp
+  string created_at   = 7; // RFC3339
+  string updated_at   = 8; // RFC3339
+}
