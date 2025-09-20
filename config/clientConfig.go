@@ -14,7 +14,7 @@ type Client struct {
 
 func ClientConfig() *Client {
 	var conn *grpc.ClientConn
-	conn, err := grpc.NewClient(":9000", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient("localhost:50021", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
