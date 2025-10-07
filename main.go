@@ -1,7 +1,13 @@
 package main
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+
+	"github.com/Omotolani98/monocrond/cmd"
+)
 
 func main() {
-	fmt.Print("Welcome to Monocrond")
+	fmt.Println("Welcome to Monocrond")
+	cmd.Execute(context.Background())
 }
