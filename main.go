@@ -1,13 +1,35 @@
 package main
 
 import (
-	"context"
-	"fmt"
+	"net"
+	"net/http"
+	"os"
 
-	"github.com/Omotolani98/monocrond/cmd"
+	"github.com/Omotolani98/monocrond/config"
+	"github.com/Omotolani98/monocrond/handler"
+	"github.com/charmbracelet/log"
 )
 
+const socketFile = "/var/run/monocron.sock"
+const tempFile = "/tmp/monocron.sock"
+
 func main() {
-	fmt.Println("Welcome to Monocrond")
-	cmd.Execute(context.Background())
+	log.Info("Welcome to Monocrond")
+	sock, err := net.Listen("unix", config.TempFile)
+	if err != nil {
+		log.Errorf("Error on socket connection <|::|> %v", err)
+		panic(err)
+	}
+	defer func() { _ = sock.Close(); _ = os.Remove(config.TempFile) }()
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/healthz", handler.Health)
+	mux.HandleFunc("/schedule", handler.Schedule)	
+	mux.HandleFunc("/shutdown", handler.Shutdown)
+	mux.HandleFunc("/list", handler.ListJobs)
+
+	srv := &http.Server{Handler: mux}
+	if err := srv.Serve(sock); err != nil && err != http.ErrServerClosed {
+		log.Fatal(err)
+	}
 }
