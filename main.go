@@ -21,10 +21,11 @@ func main() {
 		panic(err)
 	}
 	defer func() { _ = sock.Close(); _ = os.Remove(config.TempFile) }()
+	config.StartCron()
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", handler.Health)
-	mux.HandleFunc("/schedule", handler.Schedule)	
+	mux.HandleFunc("/schedule", handler.Schedule)
 	mux.HandleFunc("/shutdown", handler.Shutdown)
 	mux.HandleFunc("/list", handler.ListJobs)
 
