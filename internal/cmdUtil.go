@@ -7,30 +7,26 @@ import (
 	"github.com/Omotolani98/monocrond/config"
 	"github.com/Omotolani98/monocrond/models"
 	"github.com/charmbracelet/log"
-	"github.com/robfig/cron/v3"
 )
 
 func ScheduleCron(s models.ScheduleRequest) (*models.ScheduleResponse, error) {
-	loc, err := time.LoadLocation(s.Timezone)
-	if err != nil {
-		log.Errorf("Invalid Timezone, It's new to me <|:::|> %v\n", err)
-		return nil, err
+	spec := s.Schedule
+	if s.Timezone != "" {
+		spec = "CRON_TZ=" + s.Timezone + " " + spec
 	}
 
-	config.Cron = cron.New(
-		cron.WithLocation(loc),
-		cron.WithSeconds(),
-		cron.WithChain(
-			cron.SkipIfStillRunning(cron.DefaultLogger),
-			cron.Recover(cron.DefaultLogger),
-			),
-		)
-	config.Cron.Start()
+	to := time.Duration(s.Timeout) * time.Second
+	if to <= 0 {
+		to = 30 * time.Second 
+	}
 
-	id , _ := config.Cron.AddFunc(s.Schedule, func() {
+	id , _ := config.Cron.AddFunc(spec, func() {
 		log.Info("I am a running job")
 
-		err := 	RunCommand(context.Background(), s.Argv)
+        ctx, cancel := context.WithTimeout(context.Background(), to)
+		defer cancel()
+
+		err := 	RunCommand(ctx, s.Argv)
 		if err != nil {
 			// set status to fail 
 			log.Errorf("Error in the background <|::|> %v\n", err)
@@ -40,10 +36,18 @@ func ScheduleCron(s models.ScheduleRequest) (*models.ScheduleResponse, error) {
 		}
 
 	})
-	config.Cron.Start()
 
-	return &models.ScheduleResponse{
-		EntryJobId: int(id),
-		Name: s.Name,
-	}, nil
+	config.Mu.Lock()
+	config.Jobs[id] = &config.JobMeta{
+		Name:      s.Name,
+		Spec:      spec,
+        CreatedAt: time.Now(),
+        Timeout:   to,
+    }
+    config.Mu.Unlock()
+
+    return &models.ScheduleResponse{
+        EntryJobId: int(id),
+        Name:       s.Name,
+    }, nil
 }

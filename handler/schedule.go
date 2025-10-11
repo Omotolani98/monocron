@@ -36,6 +36,31 @@ func Shutdown(w http.ResponseWriter, r *http.Request) {
 }
 
 func ListJobs(w http.ResponseWriter, r *http.Request) {
-	log.Info(config.Cron.Entries())
-	json.NewEncoder(w).Encode(config.Cron.Entries())
+    w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+    entries := config.Cron.Entries()
+    out := make([]models.EntryView, 0, len(entries))
+
+    config.Mu.RLock()
+    for _, e := range entries {
+        name := ""
+        spec := ""
+        if meta, ok := config.Jobs[e.ID]; ok {
+            name = meta.Name
+            spec = meta.Spec
+        }
+        out = append(out, models.EntryView{
+            ID:   int(e.ID),
+            Name: name,
+            Schedule: spec,
+			Description: "",
+            Next: e.Next,
+            Prev: e.Prev,
+        })
+    }
+    config.Mu.RUnlock()
+
+    if err := json.NewEncoder(w).Encode(out); err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+    }
 }
