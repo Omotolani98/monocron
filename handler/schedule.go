@@ -4,11 +4,14 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/Omotolani98/monocrond/config"
 	cmdUtil "github.com/Omotolani98/monocrond/internal"
 	"github.com/Omotolani98/monocrond/models"
 	"github.com/charmbracelet/log"
+	"github.com/robfig/cron/v3"
 )
 
 func Schedule(w http.ResponseWriter, r *http.Request) {
@@ -63,4 +66,39 @@ func ListJobs(w http.ResponseWriter, r *http.Request) {
     if err := json.NewEncoder(w).Encode(out); err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
     }
+}
+
+func GetJob(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+	idPath := strings.TrimPrefix(r.URL.Path, "/jobs/")
+	idInt, err := strconv.Atoi(idPath)
+	if err != nil {
+		http.Error(w, "invalid job id", http.StatusBadRequest)
+		return
+	}
+	id := cron.EntryID(idInt)
+
+	entry := config.Cron.Entry(id)
+	if entry.ID == 0 {
+		http.Error(w, "job not found", http.StatusNotFound)
+		return
+	}
+
+	config.Mu.RLock()
+	meta, _ := config.Jobs[id]
+	config.Mu.RUnlock()
+
+	resp := models.EntryView{
+		ID: int(entry.ID),
+		Name: meta.Name,
+		Schedule: meta.Spec,
+		Next: entry.Next,
+		Prev: entry.Prev,
+		Description: "",
+	}
+
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+	}
 }

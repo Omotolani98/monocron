@@ -26,6 +26,12 @@ List Jobs
 curl --unix-socket /tmp/monocron.sock http://unix/list | jq
 ```
 
+Get One Job
+
+```shell
+curl --unix-socket /tmp/monocron.sock http://unix/jobs/2 | jq
+```
+
 Shutdown and Prune Crons
 
 ```shell
