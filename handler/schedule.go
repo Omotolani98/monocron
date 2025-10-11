@@ -102,3 +102,34 @@ func GetJob(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "failed to encode response", http.StatusInternalServerError)
 	}
 }
+
+func DeleteJob(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+	idPath := strings.TrimPrefix(r.URL.Path, "/delete/")
+	idInt, err := strconv.Atoi(idPath)
+	if err != nil {
+		http.Error(w, "invalid job id", http.StatusBadRequest)
+		return
+	}
+	id := cron.EntryID(idInt)
+
+	entry := config.Cron.Entry(id)
+	if entry.ID == 0 {
+		http.Error(w, "job not found", http.StatusNotFound)
+		return
+	}
+
+	config.Cron.Remove(entry.ID)
+	resp := struct {
+		Status int `json:"status"`
+		Message string `json:"message"`
+	} {
+		Status: http.StatusOK,
+		Message: "Job has been removed",
+	}
+
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+	}
+}
