@@ -10,7 +10,6 @@ import (
 	"github.com/Omotolani98/monocrond/config"
 	cmdUtil "github.com/Omotolani98/monocrond/internal"
 	"github.com/Omotolani98/monocrond/models"
-	"github.com/charmbracelet/log"
 	"github.com/robfig/cron/v3"
 )
 
@@ -21,7 +20,6 @@ func Schedule(w http.ResponseWriter, r *http.Request) {
 	}
 	var data models.ScheduleRequest
 	json.NewDecoder(r.Body).Decode(&data)
-	log.Info("Received JSON:", data)
 
 	resp, _ := cmdUtil.ScheduleCron(data)
 	w.Header().Set("Content-Type", "application/json")
