@@ -28,6 +28,7 @@ func main() {
 	mux.HandleFunc("/schedule", handler.Schedule)
 	mux.HandleFunc("/shutdown", handler.Shutdown)
 	mux.HandleFunc("/list", handler.ListJobs)
+	mux.HandleFunc("/jobs/", handler.GetJob)
 
 	srv := &http.Server{Handler: mux}
 	if err := srv.Serve(sock); err != nil && err != http.ErrServerClosed {
