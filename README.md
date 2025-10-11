@@ -32,6 +32,12 @@ Get One Job
 curl --unix-socket /tmp/monocron.sock http://unix/jobs/2 | jq
 ```
 
+Remove Job
+
+```shell
+curl --unix-socket /tmp/monocron.sock http://unix/delete/1 | jq
+```
+
 Shutdown and Prune Crons
 
 ```shell
