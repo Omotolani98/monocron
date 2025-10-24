@@ -5,6 +5,8 @@ REPO="Omotolani98/monocron"
 APP="monocrond"
 INSTALL_DIR="/usr/local/bin"
 LOG_DIR="/var/log/monocron"
+RUN_DIR="/run"
+SOCKET_PATH="/run/monocron.sock"
 SERVICE_FILE="/etc/systemd/system/${APP}.service"
 
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
@@ -51,25 +53,28 @@ ExecStart=${INSTALL_DIR}/${APP}
 User=monocron
 Group=monocron
 WorkingDirectory=/var/lib/monocron
+RuntimeDirectoryMode=0755
 Restart=always
 RestartSec=5
 StandardOutput=file:${LOG_DIR}/${APP}.log
 StandardError=file:${LOG_DIR}/${APP}.log
 
+ExecStartPre=/bin/rm -f ${SOCKET_PATH}
+
 [Install]
 WantedBy=multi-user.target
 EOF
 
-echo "🚀 Starting ${APP} service..."
+echo "Starting ${APP} service..."
 sudo systemctl daemon-reload
 sudo systemctl enable ${APP}
 sudo systemctl restart ${APP}
 
 sleep 1
 if systemctl is-active --quiet ${APP}; then
-  echo "✅ ${APP} is running!"
+  echo "${APP} is running!"
   echo "Logs: ${LOG_DIR}/${APP}.log"
 else
-  echo "⚠️ ${APP} failed to start. Check logs:"
+  echo "${APP} failed to start. Check logs:"
   echo "sudo journalctl -u ${APP} -e"
 fi

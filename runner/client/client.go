@@ -11,7 +11,7 @@ type UnixConn struct {
 }
 
 // const tempFile = "/tmp/monocron.sock"
-const socketFile = "/run/monocron/monocron.sock"
+const socketFile = "/run/monocron.sock"
 
 func InitMuxClient() *http.Client {
 	transport := &http.Transport{

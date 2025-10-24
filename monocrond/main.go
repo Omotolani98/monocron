@@ -19,6 +19,8 @@ func main() {
 	}
 
 	defer func() { _ = sock.Close(); _ = os.Remove(config.SocketFile) }()
+	_ = os.Chmod(config.SocketFile, 0660)
+	log.Infof("Started socker at %s", config.SocketFile)
 	config.StartCron()
 
 	mux := http.NewServeMux()
