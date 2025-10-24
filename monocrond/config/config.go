@@ -7,7 +7,7 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
-const SocketFile = "/run/monocron.sock"
+const SocketFile = "/run/monocron/monocron.sock"
 const TempFile = "/tmp/monocron.sock"
 
 var (
