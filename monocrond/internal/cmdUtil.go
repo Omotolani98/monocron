@@ -9,7 +9,7 @@ import (
 	"github.com/charmbracelet/log"
 )
 
-func ScheduleCron(s models.ScheduleRequest) (*models.ScheduleResponse, error) {
+func ScheduleCron(s models.ScheduleRequest) (*models.EntryView, error) {
 	spec := s.Schedule
 	if s.Timezone != "" {
 		spec = "CRON_TZ=" + s.Timezone + " " + spec
@@ -17,18 +17,18 @@ func ScheduleCron(s models.ScheduleRequest) (*models.ScheduleResponse, error) {
 
 	to := time.Duration(s.Timeout) * time.Second
 	if to <= 0 {
-		to = 30 * time.Second 
+		to = 30 * time.Second
 	}
 
-	id , _ := config.Cron.AddFunc(spec, func() {
+	id, _ := config.Cron.AddFunc(spec, func() {
 		log.Info("I am a running job")
 
-        ctx, cancel := context.WithTimeout(context.Background(), to)
+		ctx, cancel := context.WithTimeout(context.Background(), to)
 		defer cancel()
 
-		err := 	RunCommand(ctx, s.Argv)
+		err := RunCommand(ctx, s.Argv)
 		if err != nil {
-			// set status to fail 
+			// set status to fail
 			log.Errorf("Error in the background <|::|> %v\n", err)
 		} else {
 			// set status to success
@@ -41,13 +41,22 @@ func ScheduleCron(s models.ScheduleRequest) (*models.ScheduleResponse, error) {
 	config.Jobs[id] = &config.JobMeta{
 		Name:      s.Name,
 		Spec:      spec,
-        CreatedAt: time.Now(),
-        Timeout:   to,
-    }
-    config.Mu.Unlock()
+		CreatedAt: time.Now(),
+		Timeout:   to,
+	}
+	config.Mu.Unlock()
 
-    return &models.ScheduleResponse{
-        EntryJobId: int(id),
-        Name:       s.Name,
-    }, nil
+	entry := config.Cron.Entry(id)
+	// return &models.ScheduleResponse{
+	//     EntryJobId: int(id),
+	//     Name:       s.Name,
+	// }, nil
+	return &models.EntryView{
+		ID:          int(id),
+		Name:        s.Name,
+		Schedule:    s.Schedule,
+		Next:        entry.Next,
+		Prev:        entry.Prev,
+		Description: "",
+	}, nil
 }

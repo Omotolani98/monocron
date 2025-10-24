@@ -2,6 +2,8 @@ package models
 
 import (
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type ScheduleRequest struct {
@@ -12,18 +14,9 @@ type ScheduleRequest struct {
 	Argv     []string      `json:"argv"`
 }
 
-type ScheduleResponse struct {
-	EntryJobId int    `json:"jobId"`
-	Name       string `json:"name"`
-}
-
-type NamedJob interface {
-	Run()
-	Name() string
-}
-
 type EntryView struct {
-	ID          int       `json:"id"`
+	UUID        uuid.UUID `gorm:"type:uuid;uniqueIndex" json:"uuid"`
+	EntryID     int       `json:"id"`
 	Name        string    `json:"name"`
 	Schedule    string    `json:"schedule"`
 	Next        time.Time `json:"next"`
