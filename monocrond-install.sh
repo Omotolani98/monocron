@@ -36,7 +36,7 @@ sudo mv /tmp/${APP} ${INSTALL_DIR}/${APP}
 # --- Setup logs directory ---
 echo "🪵 Setting up logs at ${LOG_DIR}..."
 sudo mkdir -p "${LOG_DIR}"
-sudo touch "${LOG_DIR}/${APP}.log}"
+sudo touch "${LOG_DIR}/${APP}.log"
 sudo chown -R root:root "${LOG_DIR}"
 
 # --- Create systemd service ---
@@ -50,12 +50,11 @@ After=network.target
 ExecStart=${INSTALL_DIR}/${APP}
 User=monocron
 Group=monocron
+WorkingDirectory=/var/lib/monocron
 Restart=always
 RestartSec=5
-StandardOutput=append:${LOG_DIR}/${APP}.log
-StandardError=append:${LOG_DIR}/${APP}.log
-User=root
-WorkingDirectory=/root
+StandardOutput=file:${LOG_DIR}/${APP}.log
+StandardError=file:${LOG_DIR}/${APP}.log
 
 [Install]
 WantedBy=multi-user.target
