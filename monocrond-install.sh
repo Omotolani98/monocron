@@ -48,6 +48,8 @@ After=network.target
 
 [Service]
 ExecStart=${INSTALL_DIR}/${APP}
+User=monocron
+Group=monocron
 Restart=always
 RestartSec=5
 StandardOutput=append:${LOG_DIR}/${APP}.log

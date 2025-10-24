@@ -1,6 +1,5 @@
 package config
 
-
 import (
 	"sync"
 	"time"
@@ -8,7 +7,7 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
-const SocketFile = "/var/run/monocron.sock"
+const SocketFile = "/run/monocron/monocron.sock"
 const TempFile = "/tmp/monocron.sock"
 
 var (

@@ -18,9 +18,6 @@ func main() {
 		panic(err)
 	}
 
-	if err := os.Chmod(config.TempFile, 0777); err != nil {
-		log.Errorf("failed to chmod socket file: %v", err)
-	}
 	defer func() { _ = sock.Close(); _ = os.Remove(config.TempFile) }()
 	config.StartCron()
 
