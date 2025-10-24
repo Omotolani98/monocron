@@ -20,7 +20,7 @@ func Schedule(s *models.ScheduleRequest) (*models.EntryView, error) {
 	var buf bytes.Buffer
 	err := json.NewEncoder(&buf).Encode(s)
 	if err != nil {
-		return nil, fmt.Errorf("Could not encode to json |> %v", err)
+		return nil, fmt.Errorf("could not encode to json |> %v", err)
 	}
 
 	resp, err := c.Post("http://unix/schedule", fiber.MIMEApplicationJSON, &buf)
@@ -37,7 +37,7 @@ func Schedule(s *models.ScheduleRequest) (*models.EntryView, error) {
 	result.UUID = uuid.New()
 	err = gorm.G[models.EntryView](db.DB).Create(context.Background(), &result)
 	if err != nil {
-		return nil, fmt.Errorf("Could not persist data |> %v", err)
+		return nil, fmt.Errorf("could not persist data |> %v", err)
 	}
 
 	return &result, nil
