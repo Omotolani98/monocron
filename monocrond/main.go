@@ -10,15 +10,16 @@ import (
 	"github.com/charmbracelet/log"
 )
 
-const socketFile = "/var/run/monocron.sock"
-const tempFile = "/tmp/monocron.sock"
-
 func main() {
 	log.Info("Welcome to Monocrond")
-	sock, err := net.Listen("unix", config.TempFile)
+	sock, err := net.Listen("unix", config.SocketFile)
 	if err != nil {
 		log.Errorf("Error on socket connection <|::|> %v", err)
 		panic(err)
+	}
+
+	if err := os.Chmod(config.TempFile, 0777); err != nil {
+		log.Errorf("failed to chmod socket file: %v", err)
 	}
 	defer func() { _ = sock.Close(); _ = os.Remove(config.TempFile) }()
 	config.StartCron()

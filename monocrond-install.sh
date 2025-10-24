@@ -7,7 +7,6 @@ INSTALL_DIR="/usr/local/bin"
 LOG_DIR="/var/log/monocron"
 SERVICE_FILE="/etc/systemd/system/${APP}.service"
 
-# --- Detect OS and architecture ---
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
 ARCH=$(uname -m)
 case "$ARCH" in
@@ -16,7 +15,6 @@ case "$ARCH" in
   *) echo "❌ Unsupported architecture: $ARCH"; exit 1 ;;
 esac
 
-# --- Get latest release tag ---
 echo "🔍 Fetching latest release info..."
 TAG=$(curl -s https://api.github.com/repos/${REPO}/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
 
@@ -25,7 +23,6 @@ if [ -z "$TAG" ]; then
   exit 1
 fi
 
-# --- Download and extract binary ---
 URL="https://github.com/${REPO}/releases/download/${TAG}/${APP}_${TAG#v}_${OS}_${ARCH}.tar.gz"
 
 echo "⬇️ Downloading ${APP} ${TAG} for ${OS}/${ARCH}..."
@@ -62,13 +59,11 @@ WorkingDirectory=/root
 WantedBy=multi-user.target
 EOF
 
-# --- Enable and start service ---
 echo "🚀 Starting ${APP} service..."
 sudo systemctl daemon-reload
 sudo systemctl enable ${APP}
 sudo systemctl restart ${APP}
 
-# --- Verify ---
 sleep 1
 if systemctl is-active --quiet ${APP}; then
   echo "✅ ${APP} is running!"
