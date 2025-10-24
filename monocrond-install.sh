@@ -27,37 +27,55 @@ fi
 
 URL="https://github.com/${REPO}/releases/download/${TAG}/${APP}_${TAG#v}_${OS}_${ARCH}.tar.gz"
 
-echo "⬇️ Downloading ${APP} ${TAG} for ${OS}/${ARCH}..."
+echo "Downloading ${APP} ${TAG} for ${OS}/${ARCH}..."
 curl -L "$URL" -o /tmp/${APP}.tar.gz
 
-echo "📦 Extracting..."
+echo "Extracting..."
 tar -xzf /tmp/${APP}.tar.gz -C /tmp
 chmod +x /tmp/${APP}
 sudo mv /tmp/${APP} ${INSTALL_DIR}/${APP}
 
+echo "Checking for monocron user and group..."
+if id "monocron" &>/dev/null; then
+  echo "User 'monocron' already exists."
+else
+  echo "Creating system user and group 'monocron'..."
+  sudo groupadd --system monocron || true
+  sudo useradd --system --no-create-home --shell /usr/sbin/nologin \
+    --gid monocron monocron
+fi
+
+# --- Setup working and runtime directories ---
+echo "Setting up directories..."
+sudo mkdir -p /var/lib/monocron /run/monocron "${LOG_DIR}"
+sudo chown -R monocron:monocron /var/lib/monocron /run/monocron "${LOG_DIR}"
+sudo chmod 755 /var/lib/monocron /run/monocron
+sudo touch "${LOG_DIR}/${APP}.log"
+
 # --- Setup logs directory ---
-echo "🪵 Setting up logs at ${LOG_DIR}..."
+echo "Setting up logs at ${LOG_DIR}..."
 sudo mkdir -p "${LOG_DIR}"
 sudo touch "${LOG_DIR}/${APP}.log"
 sudo chown -R root:root "${LOG_DIR}"
 
 # --- Create systemd service ---
-echo "⚙️ Creating systemd service..."
+echo "Creating systemd service..."
 sudo tee "${SERVICE_FILE}" > /dev/null <<EOF
 [Unit]
 Description=Monocrond Daemon
 After=network.target
 
 [Service]
+PermissionsStartOnly=true
+ExecStartPre=/bin/rm -f /run/monocron/monocron.sock
 ExecStart=${INSTALL_DIR}/${APP}
 User=monocron
 Group=monocron
 WorkingDirectory=/var/lib/monocron
-RuntimeDirectoryMode=0755
 Restart=always
 RestartSec=5
-StandardOutput=file:${LOG_DIR}/${APP}.log
-StandardError=file:${LOG_DIR}/${APP}.log
+StandardOutput=append:${LOG_DIR}/${APP}.log
+StandardError=append:${LOG_DIR}/${APP}.log
 
 ExecStartPre=/bin/rm -f ${SOCKET_PATH}
 
