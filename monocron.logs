@@ -1,0 +1,8 @@
+2025/10/24 22:43:42 INFO Welcome to Monocrond
+2025/10/24 22:43:42 ERRO Error on socket connection <|::|> listen unix /run/monocron.sock: bind: no such file or directory
+panic: listen unix /run/monocron.sock: bind: no such file or directory
+
+goroutine 1 [running]:
+main.main()
+	/Volumes/CloudcrafterStore/Infra Admin San/monocron/monocrond/main.go:18 +0x29c
+exit status 2

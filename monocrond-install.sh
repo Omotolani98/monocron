@@ -5,6 +5,8 @@ REPO="Omotolani98/monocron"
 APP="monocrond"
 INSTALL_DIR="/usr/local/bin"
 LOG_DIR="/var/log/monocron"
+RUN_DIR="/run"
+SOCKET_PATH="/run/monocron.sock"
 SERVICE_FILE="/etc/systemd/system/${APP}.service"
 
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
@@ -36,7 +38,7 @@ sudo mv /tmp/${APP} ${INSTALL_DIR}/${APP}
 # --- Setup logs directory ---
 echo "🪵 Setting up logs at ${LOG_DIR}..."
 sudo mkdir -p "${LOG_DIR}"
-sudo touch "${LOG_DIR}/${APP}.log}"
+sudo touch "${LOG_DIR}/${APP}.log"
 sudo chown -R root:root "${LOG_DIR}"
 
 # --- Create systemd service ---
@@ -50,27 +52,29 @@ After=network.target
 ExecStart=${INSTALL_DIR}/${APP}
 User=monocron
 Group=monocron
+WorkingDirectory=/var/lib/monocron
+RuntimeDirectoryMode=0755
 Restart=always
 RestartSec=5
-StandardOutput=append:${LOG_DIR}/${APP}.log
-StandardError=append:${LOG_DIR}/${APP}.log
-User=root
-WorkingDirectory=/root
+StandardOutput=file:${LOG_DIR}/${APP}.log
+StandardError=file:${LOG_DIR}/${APP}.log
+
+ExecStartPre=/bin/rm -f ${SOCKET_PATH}
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-echo "🚀 Starting ${APP} service..."
+echo "Starting ${APP} service..."
 sudo systemctl daemon-reload
 sudo systemctl enable ${APP}
 sudo systemctl restart ${APP}
 
 sleep 1
 if systemctl is-active --quiet ${APP}; then
-  echo "✅ ${APP} is running!"
+  echo "${APP} is running!"
   echo "Logs: ${LOG_DIR}/${APP}.log"
 else
-  echo "⚠️ ${APP} failed to start. Check logs:"
+  echo "${APP} failed to start. Check logs:"
   echo "sudo journalctl -u ${APP} -e"
 fi

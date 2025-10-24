@@ -7,7 +7,7 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
-const SocketFile = "/run/monocron/monocron.sock"
+const SocketFile = "/run/monocron.sock"
 const TempFile = "/tmp/monocron.sock"
 
 var (
@@ -19,7 +19,6 @@ var (
 		),
 	)
 
-	// Optional: simple in-memory job registry for metadata
 	Mu   sync.RWMutex
 	Jobs = map[cron.EntryID]*JobMeta{}
 )
