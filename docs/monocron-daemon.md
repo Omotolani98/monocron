@@ -1,14 +1,32 @@
 # Monocrond
 
-The monocron daemon that handles all unix sockets calls received from monocronctl to start and execute cron jobs on the machine level.
+The monocron daemon that handles all unix sockets calls received from monocron runner to start and execute cron jobs on the machine level.
 
-## Usage
+## Installation
 
 Start Daemon
 
 ```shell
-go run main.go &> monocron.logs &
+curl -fsSL https://raw.githubusercontent.com/Omotolani98/monocron/dev/monocrond-install.sh | bash
 ```
+
+Check installation status
+
+```shell
+sudo systemctl status monocrond
+```
+
+## Uninstall
+
+```shell
+sudo systemctl stop monocrond
+sudo systemctl disable monocrond
+sudo rm /etc/systemd/system/monocrond.service
+sudo rm /usr/local/bin/monocrond
+sudo rm /var/log/monocron.log
+sudo systemctl daemon-reload
+```
+
 ## Socket APIs
 
 Schedule a job
