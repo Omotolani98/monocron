@@ -17,4 +17,5 @@ func SetupRoutes(app *fiber.App) {
 	schedules := api.Group("/schedules")
 	schedules.Post("", handlers.Schedule)
 	schedules.Get("", handlers.ListSchedules)
+	schedules.Post("/webhook", handlers.WebhookHandler)
 }
