@@ -18,7 +18,7 @@ func main() {
 		panic(err)
 	}
 
-	defer func() { _ = sock.Close(); _ = os.Remove(config.TempFile) }()
+	defer func() { _ = sock.Close(); _ = os.Remove(config.SocketFile) }()
 	config.StartCron()
 
 	mux := http.NewServeMux()
