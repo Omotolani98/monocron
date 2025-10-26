@@ -5,9 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 
 	"github.com/Omotolani98/runner/client"
 	"github.com/Omotolani98/runner/db"
+	"github.com/Omotolani98/runner/logger"
 	"github.com/Omotolani98/runner/models"
 	"github.com/charmbracelet/log"
 	"github.com/gofiber/fiber/v2"
@@ -21,7 +23,8 @@ func Schedule(s *models.ScheduleRequest) (*models.EntryView, error) {
 	var buf bytes.Buffer
 	err := json.NewEncoder(&buf).Encode(s)
 	if err != nil {
-		log.Errorf("[+] error in schedule api :: %v", err)
+		l := fmt.Errorf("[+] error in schedule api :: %v", err)
+		logger.LogReq("", l, http.MethodPost, s)
 		return nil, fmt.Errorf("could not encode to json |> %v", err)
 	}
 
