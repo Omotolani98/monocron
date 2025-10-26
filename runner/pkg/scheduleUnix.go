@@ -9,6 +9,7 @@ import (
 	"github.com/Omotolani98/runner/client"
 	"github.com/Omotolani98/runner/db"
 	"github.com/Omotolani98/runner/models"
+	"github.com/charmbracelet/log"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -20,6 +21,7 @@ func Schedule(s *models.ScheduleRequest) (*models.EntryView, error) {
 	var buf bytes.Buffer
 	err := json.NewEncoder(&buf).Encode(s)
 	if err != nil {
+		log.Errorf("[+] error in schedule api :: %v", err)
 		return nil, fmt.Errorf("could not encode to json |> %v", err)
 	}
 
@@ -48,12 +50,14 @@ func ListSchedules() ([]models.EntryView, error) {
 
 	resp, err := c.Get("http://unix/list")
 	if err != nil {
+		log.Errorf("[+] error in listschedules api :: %v", err)
 		return nil, fmt.Errorf("%v", err)
 	}
 	defer resp.Body.Close()
 
 	var result []models.EntryView
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		log.Errorf("[+] error in listschedules api :: %v", err)
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
