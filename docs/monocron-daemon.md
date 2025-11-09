@@ -34,7 +34,7 @@ sudo systemctl status monocrond
 Schedule a job
 
 ```shell
-curl --unix-socket /tmp/monocron.sock \
+curl --unix-socket /run/monocron/monocron.sock \
   -H "Content-Type: application/json" \
   -X POST http://unix/schedule \
   -d '{"name":"backup","schedule":"*/5 * * * * *","timezone":"Africa/Lagos","timeout":10,"argv":["mkdir", "HelloFolder"]}'
@@ -43,7 +43,7 @@ curl --unix-socket /tmp/monocron.sock \
 List Jobs
 
 ```shell
-curl --unix-socket /tmp/monocron.sock http://unix/list | jq
+curl --unix-socket /run/monocron/monocron.sock http://unix/list | jq
 ```
 
 Get One Job
