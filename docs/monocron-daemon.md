@@ -24,7 +24,7 @@ sudo systemctl status monocrond
   sudo systemctl disable monocrond
   sudo rm /etc/systemd/system/monocrond.service
   sudo rm /usr/local/bin/monocrond
-  sudo rm /var/log/monocron.log
+  sudo rm /var/log/monocron/monocron.log
   sudo systemctl daemon-reload
 }
 ```
