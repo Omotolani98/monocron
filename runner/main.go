@@ -10,7 +10,10 @@ import (
 )
 
 func main() {
-	db.InitDB()
+	if err := db.InitDB(); err != nil {
+		log.Fatalf("[DB]: %v", err)
+	}
+	log.Info("DB is running!")
 	logger.InitLogger()
 
 	app := fiber.New(fiber.Config{

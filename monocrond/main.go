@@ -12,15 +12,15 @@ import (
 
 func main() {
 	log.Info("Welcome to Monocrond")
-	sock, err := net.Listen("unix", config.SocketFile)
+	sock, err := net.Listen("unix", config.TempFile)
 	if err != nil {
 		log.Errorf("Error on socket connection <|::|> %v", err)
 		panic(err)
 	}
 
-	defer func() { _ = sock.Close(); _ = os.Remove(config.SocketFile) }()
+	defer func() { _ = sock.Close(); _ = os.Remove(config.TempFile) }()
 	_ = os.Chmod(config.SocketFile, 0660)
-	log.Infof("Started socker at %s", config.SocketFile)
+	log.Infof("Started socker at %s", config.TempFile)
 	config.StartCron()
 
 	mux := http.NewServeMux()
