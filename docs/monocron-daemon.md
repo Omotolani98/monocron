@@ -19,12 +19,14 @@ sudo systemctl status monocrond
 ## Uninstall
 
 ```shell
-sudo systemctl stop monocrond
-sudo systemctl disable monocrond
-sudo rm /etc/systemd/system/monocrond.service
-sudo rm /usr/local/bin/monocrond
-sudo rm /var/log/monocron.log
-sudo systemctl daemon-reload
+{
+  sudo systemctl stop monocrond
+  sudo systemctl disable monocrond
+  sudo rm /etc/systemd/system/monocrond.service
+  sudo rm /usr/local/bin/monocrond
+  sudo rm /var/log/monocron.log
+  sudo systemctl daemon-reload
+}
 ```
 
 ## Socket APIs
