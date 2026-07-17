@@ -1,0 +1,28 @@
+[Unit]
+Description=Monocron Runner Agent
+After=network-online.target monocrond.service
+Wants=network-online.target monocrond.service
+
+[Service]
+Type=simple
+User=monocron
+Group=monocron
+WorkingDirectory=/var/lib/monocron
+Environment="MONOCRON_CONTROLLER_URL=https://ctrl.example.com"
+Environment="MONOCRON_DAEMON_SOCKET=/run/monocron/monocrond.sock"
+Environment="MONOCRON_RUNNER_STATE_PATH=/var/lib/monocron/runner.state"
+Environment="MONOCRON_RUNNER_TYPE=bare_metal"
+Environment="MONOCRON_RUNNER_LABELS=zone=home,os=linux"
+ExecStart=/usr/local/bin/monocron-runner
+Restart=always
+RestartSec=3
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/monocron /run/monocron
+
+[Install]
+WantedBy=multi-user.target

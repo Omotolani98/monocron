@@ -1,0 +1,24 @@
+[Unit]
+Description=Monocron Daemon
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=monocron
+Group=monocron
+WorkingDirectory=/var/lib/monocron
+ExecStartPre=/bin/rm -f /run/monocron/monocrond.sock
+ExecStart=/usr/local/bin/monocrond
+Restart=always
+RestartSec=3
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/monocron /run/monocron
+
+[Install]
+WantedBy=multi-user.target

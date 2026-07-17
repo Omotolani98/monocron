@@ -1,19 +1,61 @@
 version: 2
 
-project_name: monocrond
+project_name: monocron
+
+before:
+  hooks:
+    - go mod tidy
+    - go test ./...
+
 builds:
-  - id: monocrond
-    main: ./main.go
-    dir: ./monocrond
-    binary: monocrond
+  - id: monocron-controller
+    main: ./cmd/monocron-controller
+    binary: monocron-controller
     ldflags:
-      - "-s -w -X main.version={{ .Version }}"
+      - "-s -w -X github.com/Omotolani98/monocron/internal/platform/version.Version={{ .Version }} -X github.com/Omotolani98/monocron/internal/platform/version.Commit={{ .Commit }} -X github.com/Omotolani98/monocron/internal/platform/version.Date={{ .Date }}"
     goos:
       - linux
       - darwin
     goarch:
       - amd64
       - arm64
+
+  - id: monocron-runner
+    main: ./cmd/monocron-runner
+    binary: monocron-runner
+    ldflags:
+      - "-s -w -X github.com/Omotolani98/monocron/internal/platform/version.Version={{ .Version }} -X github.com/Omotolani98/monocron/internal/platform/version.Commit={{ .Commit }} -X github.com/Omotolani98/monocron/internal/platform/version.Date={{ .Date }}"
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+
+  - id: monocrond
+    main: ./cmd/monocrond
+    binary: monocrond
+    ldflags:
+      - "-s -w -X github.com/Omotolani98/monocron/internal/platform/version.Version={{ .Version }} -X github.com/Omotolani98/monocron/internal/platform/version.Commit={{ .Commit }} -X github.com/Omotolani98/monocron/internal/platform/version.Date={{ .Date }}"
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+
+  - id: monocronctl
+    main: ./cmd/monocronctl
+    binary: monocronctl
+    ldflags:
+      - "-s -w -X github.com/Omotolani98/monocron/internal/platform/version.Version={{ .Version }} -X github.com/Omotolani98/monocron/internal/platform/version.Commit={{ .Commit }} -X github.com/Omotolani98/monocron/internal/platform/version.Date={{ .Date }}"
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+
 archives:
   - id: default
     format_overrides:
@@ -21,9 +63,15 @@ archives:
         format: tar.gz
       - goos: darwin
         format: tar.gz
+    files:
+      - deploy/systemd/*
+      - deploy/docker/*
+      - README.md
+
 release:
   github:
     owner: Omotolani98
     name: monocron
+
 changelog:
   sort: asc

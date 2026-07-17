@@ -1,0 +1,12 @@
+FROM golang:1.25-alpine3.22 AS builder
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 go build -o /out/monocron-controller ./cmd/monocron-controller
+
+FROM alpine:3.22
+WORKDIR /app
+COPY --from=builder /out/monocron-controller .
+EXPOSE 8080 9090
+CMD ["./monocron-controller"]
