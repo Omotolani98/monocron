@@ -21,7 +21,7 @@ if [ -z "$TAG" ]; then
   exit 1
 fi
 
-URL="https://github.com/${REPO}/releases/download/${TAG}/${APP}_${TAG}_${OS}_${ARCH}.tar.gz"
+URL="https://github.com/${REPO}/releases/download/${TAG}/${APP}_${TAG#v}_${OS}_${ARCH}.tar.gz"
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
