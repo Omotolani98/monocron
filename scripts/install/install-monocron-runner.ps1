@@ -17,7 +17,7 @@ if (-not $tag) {
     throw "Failed to fetch latest release."
 }
 
-$url = "https://github.com/$Repo/releases/download/$tag/${App}_$($tag.TrimStart('v'))_${os}_${arch}.zip"
+$url = "https://github.com/$Repo/releases/download/$tag/${App}_${tag}_${os}_${arch}.zip"
 $tmp = Join-Path $env:TEMP ([System.Guid]::NewGuid().ToString())
 New-Item -ItemType Directory -Path $tmp | Out-Null
 

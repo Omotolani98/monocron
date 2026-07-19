@@ -57,7 +57,52 @@ builds:
       - arm64
 
 archives:
-  - id: default
+  - id: monocron-controller
+    builds:
+      - monocron-controller
+    name_template: "monocron-controller_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: linux
+        format: tar.gz
+      - goos: darwin
+        format: tar.gz
+    files:
+      - deploy/systemd/*
+      - deploy/docker/*
+      - README.md
+
+  - id: monocron-runner
+    builds:
+      - monocron-runner
+    name_template: "monocron-runner_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: linux
+        format: tar.gz
+      - goos: darwin
+        format: tar.gz
+    files:
+      - deploy/systemd/*
+      - deploy/docker/*
+      - README.md
+
+  - id: monocrond
+    builds:
+      - monocrond
+    name_template: "monocrond_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: linux
+        format: tar.gz
+      - goos: darwin
+        format: tar.gz
+    files:
+      - deploy/systemd/*
+      - deploy/docker/*
+      - README.md
+
+  - id: monocronctl
+    builds:
+      - monocronctl
+    name_template: "monocronctl_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     format_overrides:
       - goos: linux
         format: tar.gz
