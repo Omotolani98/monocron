@@ -87,28 +87,24 @@ func (c *Client) SubmitLogChunks(ctx context.Context, chunks []contracts.LogChun
 }
 
 func (c *Client) get(ctx context.Context, path string, out any) error {
-	u, err := url.JoinPath(c.baseURL, path)
-	if err != nil {
-		return err
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
-	if err != nil {
-		return err
-	}
-	c.authorize(req)
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	return decodeResponse(resp, out)
+	return c.do(ctx, http.MethodGet, path, nil, out)
 }
 
 func (c *Client) post(ctx context.Context, path string, body, out any) error {
-	u, err := url.JoinPath(c.baseURL, path)
+	return c.do(ctx, http.MethodPost, path, body, out)
+}
+
+func (c *Client) do(ctx context.Context, method, path string, body, out any) error {
+	base, err := url.Parse(c.baseURL)
 	if err != nil {
 		return err
 	}
+	rel, err := url.Parse(path)
+	if err != nil {
+		return err
+	}
+	u := base.ResolveReference(rel)
+
 	var bodyReader io.Reader
 	if body != nil {
 		b, err := json.Marshal(body)
@@ -117,11 +113,14 @@ func (c *Client) post(ctx context.Context, path string, body, out any) error {
 		}
 		bodyReader = bytes.NewReader(b)
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u, bodyReader)
+
+	req, err := http.NewRequestWithContext(ctx, method, u.String(), bodyReader)
 	if err != nil {
 		return err
 	}
-	req.Header.Set("Content-Type", "application/json")
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
 	c.authorize(req)
 	resp, err := c.httpClient.Do(req)
 	if err != nil {

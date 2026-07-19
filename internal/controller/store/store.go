@@ -428,6 +428,14 @@ func (s *DB) UpdateRunnerState(ctx context.Context, id uuid.UUID, state contract
 	return err
 }
 
+// ActivateRunner transitions pending or offline runners to live.
+func (s *DB) ActivateRunner(ctx context.Context, id uuid.UUID) error {
+	_, err := s.db.ExecContext(ctx,
+		`UPDATE runners SET state=$1, updated_at=$2 WHERE id=$3 AND state IN ($4, $5)`,
+		contracts.RunnerStateLive, time.Now().UTC(), id, contracts.RunnerStatePending, contracts.RunnerStateOffline)
+	return err
+}
+
 // UpdateRunnerHeartbeat updates heartbeat and version metadata.
 func (s *DB) UpdateRunnerHeartbeat(ctx context.Context, id uuid.UUID, req contracts.HeartbeatRequest) error {
 	labelsJSON, _ := json.Marshal(req.Labels)

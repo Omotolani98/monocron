@@ -137,6 +137,10 @@ func (s *Server) handleHeartbeat(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "could not update heartbeat")
 		return
 	}
+	// Move pending/offline runners to live once they have successfully heartbeated.
+	if err := s.db.ActivateRunner(r.Context(), runnerID); err != nil {
+		s.log.Error("activate runner", "error", err)
+	}
 	runner, err := s.db.GetRunner(r.Context(), runnerID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())

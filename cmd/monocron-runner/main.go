@@ -39,6 +39,8 @@ func main() {
 		os.Exit(1)
 	}
 
+	log.Info("runner configured", "runner_id", state.RunnerID, "controller_url", cfg.ControllerURL, "daemon_socket", cfg.DaemonSocket, "state_path", cfg.StatePath)
+
 	controller := controllerclient.New(cfg.ControllerURL, state.AccessToken)
 	daemon := daemonclient.New(cfg.DaemonSocket)
 

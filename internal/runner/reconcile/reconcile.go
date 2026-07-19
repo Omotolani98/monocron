@@ -43,6 +43,8 @@ func NewRunner(controller *controllerclient.Client, daemon *daemonclient.Client,
 
 // Start begins the reconciliation and heartbeat loops.
 func (r *Runner) Start(ctx context.Context) {
+	// Send an immediate heartbeat so the controller marks the runner live right away.
+	go r.sendHeartbeat(ctx)
 	go r.heartbeatLoop(ctx)
 	go r.pollLoop(ctx)
 }
