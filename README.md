@@ -47,33 +47,169 @@ irm https://raw.githubusercontent.com/Omotolani98/monocron/v0.3.0/scripts/instal
 
 All scripts download the latest GitHub release for the current OS/architecture, extract the binary, and place it in the system or user path.
 
+On Linux, the component install scripts also copy the systemd unit files to `/etc/systemd/system`, create the `monocron` user and required directories, and enable the services where appropriate.
+
 ## Quick Start
 
+Monocron has three logical roles. They can all run on one server or be split across machines.
+
+```text
+Controller server          Runner servers
+├─ monocron-controller     ├─ monocron-runner
+└─ PostgreSQL              ├─ monocrond
+                           └─ scheduled jobs
+
+Operator machine
+└─ monocronctl
+```
+
+- The controller stores state and exposes the API.
+- Each runner host runs `monocron-runner` and `monocrond`. Jobs execute on the runner host.
+- Runner hosts only need outbound access to the controller.
+
+### 1. Controller server
+
+Install the binary and systemd unit:
+
 ```bash
-# 1. Start PostgreSQL and run the controller
-export MONOCRON_DATABASE_URL="postgres://user:pass@localhost/monocron?sslmode=disable"
-monocron-controller
+curl -fsSL https://raw.githubusercontent.com/Omotolani98/monocron/v0.3.0/scripts/install/install-monocron-controller.sh | bash
+```
 
-# 2. Install monocrond on a target host and start it
-sudo monocrond
+Create a PostgreSQL database, then edit the controller environment file:
 
-# 3. Log in from your workstation
-monocronctl login http://localhost:8080 admin-key
+```bash
+sudo nano /etc/monocron/controller.env
+```
 
-# 4. Create an enrollment token for the host
+Set at least:
+
+```ini
+MONOCRON_DATABASE_URL=postgres://user:password@localhost/monocron?sslmode=disable
+```
+
+Start and verify:
+
+```bash
+sudo systemctl enable --now monocron-controller
+systemctl status monocron-controller --no-pager -l
+curl http://127.0.0.1:8080/api/v1/health
+```
+
+Note the controller's reachable URL (`http://CONTROLLER_IP:8080`).
+
+### 2. Operator machine
+
+Install the CLI:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Omotolani98/monocron/v0.3.0/scripts/install/install-monocronctl.sh | bash
+```
+
+Log in to the controller. Admin authentication is currently a placeholder, so any key works:
+
+```bash
+monocronctl login http://CONTROLLER_IP:8080 placeholder
+```
+
+Create an enrollment token for the runner host:
+
+```bash
 monocronctl runner token zone=home os=linux
+```
 
-# 5. On the host, join the runner
-monocronctl runner join <token>
-sudo systemctl start monocron-runner
+Copy the printed token.
 
-# 6. Create a schedule
+### 3. Runner host
+
+Install the daemon and runner. The install script registers the systemd units and creates the `monocron` user:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Omotolani98/monocron/v0.3.0/scripts/install/install-monocrond.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Omotolani98/monocron/v0.3.0/scripts/install/install-monocron-runner.sh | bash
+```
+
+Edit the runner environment file:
+
+```bash
+sudo nano /etc/monocron/runner.env
+```
+
+Set the controller URL:
+
+```ini
+MONOCRON_CONTROLLER_URL=http://CONTROLLER_IP:8080
+```
+
+Start `monocrond`:
+
+```bash
+sudo systemctl enable --now monocrond
+```
+
+Enroll the runner as the `monocron` user so the state file is readable by the service:
+
+```bash
+sudo -u monocron monocronctl \
+  --controller-url http://CONTROLLER_IP:8080 \
+  runner \
+  --state /var/lib/monocron/runner.state \
+  join '<PASTE_TOKEN_HERE>'
+```
+
+Start the runner:
+
+```bash
+sudo systemctl enable --now monocron-runner
+systemctl status monocron-runner --no-pager -l
+```
+
+### 4. Create a schedule
+
+From the operator machine:
+
+```bash
 monocronctl schedule create backup "0 2 * * *" 10m /usr/local/bin/backup.sh zone=home
-
-# 7. Watch executions
+monocronctl schedule list
 monocronctl execution list
 monocronctl execution logs <execution-id>
 ```
+
+Labels on the schedule (`zone=home os=linux`) must match the labels given to the enrollment token.
+
+### Same-server development
+
+To run everything on one machine, use `http://127.0.0.1:8080` for the controller URL.
+
+```bash
+export MONOCRON_DATABASE_URL="postgres://user:pass@localhost/monocron?sslmode=disable"
+sudo systemctl enable --now monocron-controller
+sudo systemctl enable --now monocrond
+monocronctl login http://127.0.0.1:8080 placeholder
+TOKEN=$(monocronctl runner token zone=home os=linux | awk '/Enrollment token:/{print $3}')
+sudo -u monocron monocronctl --controller-url http://127.0.0.1:8080 runner --state /var/lib/monocron/runner.state join "$TOKEN"
+sudo systemctl enable --now monocron-runner
+```
+
+## Troubleshooting
+
+Check service status and recent logs:
+
+```bash
+systemctl status monocron-controller --no-pager -l
+systemctl status monocrond --no-pager -l
+systemctl status monocron-runner --no-pager -l
+
+journalctl -u monocron-controller -n 100 --no-pager
+journalctl -u monocrond -n 100 --no-pager
+journalctl -u monocron-runner -n 100 --no-pager
+```
+
+Common issues:
+
+- **"Controller URL is required"** — run `monocronctl login <url> <key>` or pass `--controller-url`.
+- **Runner fails to start** — verify `/etc/monocron/runner.env` has `MONOCRON_CONTROLLER_URL`, the runner was enrolled, and `/var/lib/monocron/runner.state` is owned by `monocron:monocron`.
+- **Jobs never run** — confirm schedule labels match runner labels (`monocronctl runner list`).
+- **monocrond.sock missing** — ensure `monocrond` started before `monocron-runner`.
 
 ## Configuration
 
@@ -149,6 +285,8 @@ go test ./...
 
 ### monocron-controller
 
+Set these in `/etc/monocron/controller.env`:
+
 - `MONOCRON_DATABASE_URL` — required PostgreSQL DSN
 - `MONOCRON_CONTROLLER_LISTEN` — default `:8080`
 - `MONOCRON_METRICS_LISTEN` — default `:9090`
@@ -156,12 +294,16 @@ go test ./...
 
 ### monocron-runner
 
-- `MONOCRON_RUNNER_CONFIG` — config file path, default platform config dir (`~/.config/monocron/runner.json` on Linux)
+Set these in `/etc/monocron/runner.env`:
+
 - `MONOCRON_CONTROLLER_URL` — required controller URL (overrides config file)
-- `MONOCRON_DAEMON_SOCKET` — default `/run/monocron/monocrond.sock`
 - `MONOCRON_RUNNER_STATE_PATH` — default platform config dir (`~/.config/monocron/runner.state` on Linux)
 - `MONOCRON_RUNNER_TYPE` — default `bare_metal`
 - `MONOCRON_RUNNER_LABELS` — comma-separated `key=value` labels
+- `MONOCRON_POLL_INTERVAL` or `MONOCRON_RUNNER_POLL_INTERVAL` — default `10s`
+- `MONOCRON_HEARTBEAT_INTERVAL` or `MONOCRON_RUNNER_HEARTBEAT_INTERVAL` — default `10s`
+
+The runner also reads `MONOCRON_RUNNER_CONFIG` for the config file path and `MONOCRON_DAEMON_SOCKET` for the local daemon socket.
 
 ### monocrond
 

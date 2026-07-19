@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/spf13/viper"
@@ -159,8 +160,18 @@ func Load(path string) (RunnerConfig, error) {
 	if err := v.ReadInConfig(); err != nil {
 		return RunnerConfig{}, fmt.Errorf("read config: %w", err)
 	}
+
 	v.SetEnvPrefix("MONOCRON")
 	v.AutomaticEnv()
+
+	// Bind runner-specific environment variables to their config keys so the
+	// documented names (e.g. MONOCRON_RUNNER_STATE_PATH) take precedence.
+	_ = v.BindEnv("state_path", "MONOCRON_RUNNER_STATE_PATH")
+	_ = v.BindEnv("type", "MONOCRON_RUNNER_TYPE")
+	_ = v.BindEnv("labels", "MONOCRON_RUNNER_LABELS")
+	_ = v.BindEnv("poll_interval", "MONOCRON_POLL_INTERVAL", "MONOCRON_RUNNER_POLL_INTERVAL")
+	_ = v.BindEnv("heartbeat_interval", "MONOCRON_HEARTBEAT_INTERVAL", "MONOCRON_RUNNER_HEARTBEAT_INTERVAL")
+
 	v.SetDefault("controller_url", DefaultControllerURL)
 	v.SetDefault("daemon_socket", DefaultDaemonSocket)
 	v.SetDefault("type", DefaultRunnerType)
@@ -177,7 +188,7 @@ func Load(path string) (RunnerConfig, error) {
 
 // populatedConfig reads fields from a Viper instance.
 func populatedConfig(v *viper.Viper) RunnerConfig {
-	labels := v.GetStringMapString("labels")
+	labels := loadLabels(v)
 	if labels == nil {
 		labels = map[string]string{}
 	}
@@ -193,9 +204,34 @@ func populatedConfig(v *viper.Viper) RunnerConfig {
 	}
 }
 
-func firstNonEmpty(a, b string) string {
-	if a != "" {
-		return a
+// loadLabels reads labels from config or from a comma-separated env string.
+func loadLabels(v *viper.Viper) map[string]string {
+	if v.IsSet("labels") {
+		if s := v.GetString("labels"); s != "" {
+			parsed, err := parseLabels(s)
+			if err == nil {
+				return parsed
+			}
+		}
 	}
-	return b
+	return v.GetStringMapString("labels")
+}
+
+func parseLabels(v string) (map[string]string, error) {
+	labels := map[string]string{}
+	if v == "" {
+		return labels, nil
+	}
+	for _, part := range strings.Split(v, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		kv := strings.SplitN(part, "=", 2)
+		if len(kv) != 2 {
+			return nil, fmt.Errorf("invalid label %q, expected key=value", part)
+		}
+		labels[strings.TrimSpace(kv[0])] = strings.TrimSpace(kv[1])
+	}
+	return labels, nil
 }

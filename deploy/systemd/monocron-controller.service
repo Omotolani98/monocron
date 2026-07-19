@@ -1,5 +1,5 @@
 [Unit]
-Description=Monocron Daemon
+Description=Monocron Controller
 Documentation=https://github.com/Omotolani98/monocron
 After=network-online.target
 Wants=network-online.target
@@ -8,20 +8,18 @@ Wants=network-online.target
 Type=simple
 User=monocron
 Group=monocron
-RuntimeDirectory=monocron
-StateDirectory=monocron
-LogsDirectory=monocron
-ExecStartPre=/bin/rm -f /run/monocron/monocrond.sock
-ExecStart=/usr/local/bin/monocrond
+EnvironmentFile=-/etc/monocron/controller.env
+ExecStart=/usr/local/bin/monocron-controller
+ExecStartPre=/bin/sh -c 'test -s /etc/monocron/controller.env || (echo "Missing /etc/monocron/controller.env" && exit 1)'
 Restart=always
-RestartSec=3
+RestartSec=5
 
 # Hardening
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/var/lib/monocron /run/monocron
+ReadWritePaths=/var/lib/monocron
 
 [Install]
 WantedBy=multi-user.target

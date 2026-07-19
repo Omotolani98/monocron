@@ -40,17 +40,23 @@ fi
 
 chmod +x "${INSTALL_DIR}/${APP}"
 
-# Create user and directories if running as root
+# Install systemd unit and create runtime/state directories when running as root.
 if [ "$(id -u)" -eq 0 ]; then
   if ! id "$USER" &>/dev/null; then
     groupadd --system "$GROUP" || true
     useradd --system --no-create-home --shell /usr/sbin/nologin --gid "$GROUP" "$USER"
   fi
+
   mkdir -p /var/lib/monocron /run/monocron /var/log/monocron
+  cp "${TMP}/deploy/systemd/monocrond.service" /etc/systemd/system/
   chown -R "${USER}:${GROUP}" /var/lib/monocron /run/monocron /var/log/monocron
+
+  systemctl daemon-reload
+  systemctl enable --now monocrond
 fi
 
 echo "${APP} installed to ${INSTALL_DIR}/${APP}"
-echo "To run as a service, copy deploy/systemd/monocrond.service to /etc/systemd/system/ and run:"
-echo "  sudo systemctl daemon-reload"
-echo "  sudo systemctl enable --now monocrond"
+echo ""
+echo "Verify:"
+echo "  systemctl status monocrond --no-pager -l"
+echo "  ls -l /run/monocron/monocrond.sock"

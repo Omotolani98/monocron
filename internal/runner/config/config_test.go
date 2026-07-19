@@ -66,6 +66,29 @@ func TestLoadReturnsDefaultsAndOverrides(t *testing.T) {
 	}
 }
 
+func TestLoadUsesRunnerSpecificEnvVars(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "runner.json")
+
+	t.Setenv("MONOCRON_RUNNER_STATE_PATH", "/var/lib/monocron/runner.state")
+	t.Setenv("MONOCRON_RUNNER_TYPE", "vm")
+	t.Setenv("MONOCRON_RUNNER_LABELS", "zone=home,os=linux")
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if cfg.StatePath != "/var/lib/monocron/runner.state" {
+		t.Fatalf("expected state path override, got %q", cfg.StatePath)
+	}
+	if cfg.Type != "vm" {
+		t.Fatalf("expected type override, got %q", cfg.Type)
+	}
+	if cfg.Labels["zone"] != "home" || cfg.Labels["os"] != "linux" {
+		t.Fatalf("expected labels, got %v", cfg.Labels)
+	}
+}
+
 func TestLoadUsesConfiguredStatePath(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "runner.json")
@@ -95,5 +118,24 @@ func TestReadConfigParseError(t *testing.T) {
 	}
 	if _, err := ReadConfig(path); err == nil {
 		t.Fatal("expected parse error")
+	}
+}
+
+func TestParseLabels(t *testing.T) {
+	got, err := parseLabels("zone=home, os=linux , foo=bar")
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	want := map[string]string{"zone": "home", "os": "linux", "foo": "bar"}
+	for k, v := range want {
+		if got[k] != v {
+			t.Fatalf("expected %s=%s, got %s", k, v, got[k])
+		}
+	}
+}
+
+func TestParseLabelsInvalid(t *testing.T) {
+	if _, err := parseLabels("zone"); err == nil {
+		t.Fatal("expected error for invalid label")
 	}
 }
