@@ -17,32 +17,32 @@ Each component can be installed with a one-liner. Scripts are hosted at `https:/
 
 ```bash
 # monocronctl (CLI)
-curl -fsSL https://raw.githubusercontent.com/Omotolani98/monocron/v0.3.0/scripts/install/install-monocronctl.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Omotolani98/monocron/v0.4.0/scripts/install/install-monocronctl.sh | bash
 
 # monocron-controller (control plane)
-curl -fsSL https://raw.githubusercontent.com/Omotolani98/monocron/v0.3.0/scripts/install/install-monocron-controller.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Omotolani98/monocron/v0.4.0/scripts/install/install-monocron-controller.sh | bash
 
 # monocrond (host-local scheduler/executor)
-curl -fsSL https://raw.githubusercontent.com/Omotolani98/monocron/v0.3.0/scripts/install/install-monocrond.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Omotolani98/monocron/v0.4.0/scripts/install/install-monocrond.sh | bash
 
 # monocron-runner (host agent)
-curl -fsSL https://raw.githubusercontent.com/Omotolani98/monocron/v0.3.0/scripts/install/install-monocron-runner.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Omotolani98/monocron/v0.4.0/scripts/install/install-monocron-runner.sh | bash
 ```
 
 ### Windows (PowerShell)
 
 ```powershell
 # monocronctl (CLI)
-irm https://raw.githubusercontent.com/Omotolani98/monocron/v0.3.0/scripts/install/install-monocronctl.ps1 | iex
+irm https://raw.githubusercontent.com/Omotolani98/monocron/v0.4.0/scripts/install/install-monocronctl.ps1 | iex
 
 # monocron-controller (control plane)
-irm https://raw.githubusercontent.com/Omotolani98/monocron/v0.3.0/scripts/install/install-monocron-controller.ps1 | iex
+irm https://raw.githubusercontent.com/Omotolani98/monocron/v0.4.0/scripts/install/install-monocron-controller.ps1 | iex
 
 # monocrond (host-local scheduler/executor)
-irm https://raw.githubusercontent.com/Omotolani98/monocron/v0.3.0/scripts/install/install-monocrond.ps1 | iex
+irm https://raw.githubusercontent.com/Omotolani98/monocron/v0.4.0/scripts/install/install-monocrond.ps1 | iex
 
 # monocron-runner (host agent)
-irm https://raw.githubusercontent.com/Omotolani98/monocron/v0.3.0/scripts/install/install-monocron-runner.ps1 | iex
+irm https://raw.githubusercontent.com/Omotolani98/monocron/v0.4.0/scripts/install/install-monocron-runner.ps1 | iex
 ```
 
 All scripts download the latest GitHub release for the current OS/architecture, extract the binary, and place it in the system or user path.
@@ -72,7 +72,7 @@ Operator machine
 Install the binary and systemd unit:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Omotolani98/monocron/v0.3.0/scripts/install/install-monocron-controller.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Omotolani98/monocron/v0.4.0/scripts/install/install-monocron-controller.sh | bash
 ```
 
 Create a PostgreSQL database, then edit the controller environment file:
@@ -102,7 +102,7 @@ Note the controller's reachable URL (`http://CONTROLLER_IP:8080`).
 Install the CLI:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Omotolani98/monocron/v0.3.0/scripts/install/install-monocronctl.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Omotolani98/monocron/v0.4.0/scripts/install/install-monocronctl.sh | bash
 ```
 
 Log in to the controller. Admin authentication is currently a placeholder, so any key works:
@@ -124,8 +124,8 @@ Copy the printed token.
 Install the daemon and runner. The install script registers the systemd units and creates the `monocron` user:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Omotolani98/monocron/v0.3.0/scripts/install/install-monocrond.sh | bash
-curl -fsSL https://raw.githubusercontent.com/Omotolani98/monocron/v0.3.0/scripts/install/install-monocron-runner.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Omotolani98/monocron/v0.4.0/scripts/install/install-monocrond.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Omotolani98/monocron/v0.4.0/scripts/install/install-monocron-runner.sh | bash
 ```
 
 Edit the runner environment file:
@@ -243,8 +243,8 @@ monocronctl update
 Update to a specific version (dry run first):
 
 ```bash
-monocronctl update --dry-run v0.3.0
-monocronctl update v0.3.0
+monocronctl update --dry-run v0.4.0
+monocronctl update v0.4.0
 ```
 
 The command updates `monocronctl`, `monocron-controller`, `monocron-runner`, and `monocrond` in the directory that contains `monocronctl` (override with `--bin-dir`). Updates are supported on Linux and macOS.
