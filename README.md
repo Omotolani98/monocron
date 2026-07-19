@@ -17,32 +17,32 @@ Each component can be installed with a one-liner. Scripts are hosted at `https:/
 
 ```bash
 # monocronctl (CLI)
-curl -fsSL https://raw.githubusercontent.com/Omotolani98/monocron/dev/scripts/install/install-monocronctl.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Omotolani98/monocron/v0.2.3/scripts/install/install-monocronctl.sh | bash
 
 # monocron-controller (control plane)
-curl -fsSL https://raw.githubusercontent.com/Omotolani98/monocron/dev/scripts/install/install-monocron-controller.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Omotolani98/monocron/v0.2.3/scripts/install/install-monocron-controller.sh | bash
 
 # monocrond (host-local scheduler/executor)
-curl -fsSL https://raw.githubusercontent.com/Omotolani98/monocron/dev/scripts/install/install-monocrond.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Omotolani98/monocron/v0.2.3/scripts/install/install-monocrond.sh | bash
 
 # monocron-runner (host agent)
-curl -fsSL https://raw.githubusercontent.com/Omotolani98/monocron/dev/scripts/install/install-monocron-runner.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Omotolani98/monocron/v0.2.3/scripts/install/install-monocron-runner.sh | bash
 ```
 
 ### Windows (PowerShell)
 
 ```powershell
 # monocronctl (CLI)
-irm https://raw.githubusercontent.com/Omotolani98/monocron/dev/scripts/install/install-monocronctl.ps1 | iex
+irm https://raw.githubusercontent.com/Omotolani98/monocron/v0.2.3/scripts/install/install-monocronctl.ps1 | iex
 
 # monocron-controller (control plane)
-irm https://raw.githubusercontent.com/Omotolani98/monocron/dev/scripts/install/install-monocron-controller.ps1 | iex
+irm https://raw.githubusercontent.com/Omotolani98/monocron/v0.2.3/scripts/install/install-monocron-controller.ps1 | iex
 
 # monocrond (host-local scheduler/executor)
-irm https://raw.githubusercontent.com/Omotolani98/monocron/dev/scripts/install/install-monocrond.ps1 | iex
+irm https://raw.githubusercontent.com/Omotolani98/monocron/v0.2.3/scripts/install/install-monocrond.ps1 | iex
 
 # monocron-runner (host agent)
-irm https://raw.githubusercontent.com/Omotolani98/monocron/dev/scripts/install/install-monocron-runner.ps1 | iex
+irm https://raw.githubusercontent.com/Omotolani98/monocron/v0.2.3/scripts/install/install-monocron-runner.ps1 | iex
 ```
 
 All scripts download the latest GitHub release for the current OS/architecture, extract the binary, and place it in the system or user path.
