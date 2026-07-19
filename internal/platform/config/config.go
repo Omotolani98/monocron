@@ -29,39 +29,6 @@ func ControllerConfigFromEnv() (ControllerConfig, error) {
 	return cfg, nil
 }
 
-// RunnerConfig holds runner agent configuration.
-type RunnerConfig struct {
-	ControllerURL    string
-	StatePath        string
-	DaemonSocket     string
-	Labels           map[string]string
-	Type             string
-	PollInterval     time.Duration
-	HeartbeatInterval time.Duration
-	LogLevel         string
-}
-
-func RunnerConfigFromEnv() (RunnerConfig, error) {
-	labels, err := parseLabels(getEnv("MONOCRON_RUNNER_LABELS", ""))
-	if err != nil {
-		return RunnerConfig{}, err
-	}
-	cfg := RunnerConfig{
-		ControllerURL:     os.Getenv("MONOCRON_CONTROLLER_URL"),
-		StatePath:         getEnv("MONOCRON_RUNNER_STATE_PATH", "/var/lib/monocron/runner.state"),
-		DaemonSocket:      getEnv("MONOCRON_DAEMON_SOCKET", "/run/monocron/monocrond.sock"),
-		Labels:            labels,
-		Type:              getEnv("MONOCRON_RUNNER_TYPE", "bare_metal"),
-		PollInterval:      parseDuration(getEnv("MONOCRON_POLL_INTERVAL", "10s")),
-		HeartbeatInterval: parseDuration(getEnv("MONOCRON_HEARTBEAT_INTERVAL", "10s")),
-		LogLevel:          getEnv("MONOCRON_LOG_LEVEL", "info"),
-	}
-	if cfg.ControllerURL == "" {
-		return cfg, fmt.Errorf("MONOCRON_CONTROLLER_URL is required")
-	}
-	return cfg, nil
-}
-
 // DaemonConfig holds daemon runtime configuration.
 type DaemonConfig struct {
 	SocketPath    string

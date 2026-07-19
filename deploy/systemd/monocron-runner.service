@@ -8,9 +8,10 @@ Type=simple
 User=monocron
 Group=monocron
 WorkingDirectory=/var/lib/monocron
+Environment="MONOCRON_RUNNER_CONFIG=/etc/monocron/runner.json"
+Environment="MONOCRON_RUNNER_STATE_PATH=/var/lib/monocron/runner.state"
 Environment="MONOCRON_CONTROLLER_URL=https://ctrl.example.com"
 Environment="MONOCRON_DAEMON_SOCKET=/run/monocron/monocrond.sock"
-Environment="MONOCRON_RUNNER_STATE_PATH=/var/lib/monocron/runner.state"
 Environment="MONOCRON_RUNNER_TYPE=bare_metal"
 Environment="MONOCRON_RUNNER_LABELS=zone=home,os=linux"
 ExecStart=/usr/local/bin/monocron-runner
@@ -22,7 +23,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/var/lib/monocron /run/monocron
+ReadWritePaths=/var/lib/monocron /run/monocron /etc/monocron
 
 [Install]
 WantedBy=multi-user.target

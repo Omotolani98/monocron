@@ -8,9 +8,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Omotolani98/monocron/internal/platform/config"
 	"github.com/Omotolani98/monocron/internal/platform/logging"
 	"github.com/Omotolani98/monocron/internal/platform/version"
+	runnerconfig "github.com/Omotolani98/monocron/internal/runner/config"
 	"github.com/Omotolani98/monocron/internal/runner/controllerclient"
 	"github.com/Omotolani98/monocron/internal/runner/daemonclient"
 	"github.com/Omotolani98/monocron/internal/runner/reconcile"
@@ -21,7 +21,11 @@ func main() {
 	log := slog.Default()
 	log.Info("starting monocron-runner", "version", version.Version)
 
-	cfg, err := config.RunnerConfigFromEnv()
+	cfgPath := os.Getenv("MONOCRON_RUNNER_CONFIG")
+	if cfgPath == "" {
+		cfgPath = runnerconfig.DefaultConfigPath()
+	}
+	cfg, err := runnerconfig.Load(cfgPath)
 	if err != nil {
 		log.Error("configuration", "error", err)
 		os.Exit(1)
@@ -39,11 +43,11 @@ func main() {
 	daemon := daemonclient.New(cfg.DaemonSocket)
 
 	runner := reconcile.NewRunner(controller, daemon, log, reconcile.RunnerConfig{
-		RunnerID:      state.RunnerID,
-		Version:       version.Version,
-		DaemonVersion: version.Version,
-		Labels:        cfg.Labels,
-		PollInterval:  cfg.PollInterval,
+		RunnerID:          state.RunnerID,
+		Version:           version.Version,
+		DaemonVersion:     version.Version,
+		Labels:            cfg.Labels,
+		PollInterval:      cfg.PollInterval,
 		HeartbeatInterval: cfg.HeartbeatInterval,
 	})
 

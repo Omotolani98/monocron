@@ -17,32 +17,32 @@ Each component can be installed with a one-liner. Scripts are hosted at `https:/
 
 ```bash
 # monocronctl (CLI)
-curl -fsSL https://raw.githubusercontent.com/Omotolani98/monocron/v0.2.3/scripts/install/install-monocronctl.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Omotolani98/monocron/v0.2.4/scripts/install/install-monocronctl.sh | bash
 
 # monocron-controller (control plane)
-curl -fsSL https://raw.githubusercontent.com/Omotolani98/monocron/v0.2.3/scripts/install/install-monocron-controller.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Omotolani98/monocron/v0.2.4/scripts/install/install-monocron-controller.sh | bash
 
 # monocrond (host-local scheduler/executor)
-curl -fsSL https://raw.githubusercontent.com/Omotolani98/monocron/v0.2.3/scripts/install/install-monocrond.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Omotolani98/monocron/v0.2.4/scripts/install/install-monocrond.sh | bash
 
 # monocron-runner (host agent)
-curl -fsSL https://raw.githubusercontent.com/Omotolani98/monocron/v0.2.3/scripts/install/install-monocron-runner.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Omotolani98/monocron/v0.2.4/scripts/install/install-monocron-runner.sh | bash
 ```
 
 ### Windows (PowerShell)
 
 ```powershell
 # monocronctl (CLI)
-irm https://raw.githubusercontent.com/Omotolani98/monocron/v0.2.3/scripts/install/install-monocronctl.ps1 | iex
+irm https://raw.githubusercontent.com/Omotolani98/monocron/v0.2.4/scripts/install/install-monocronctl.ps1 | iex
 
 # monocron-controller (control plane)
-irm https://raw.githubusercontent.com/Omotolani98/monocron/v0.2.3/scripts/install/install-monocron-controller.ps1 | iex
+irm https://raw.githubusercontent.com/Omotolani98/monocron/v0.2.4/scripts/install/install-monocron-controller.ps1 | iex
 
 # monocrond (host-local scheduler/executor)
-irm https://raw.githubusercontent.com/Omotolani98/monocron/v0.2.3/scripts/install/install-monocrond.ps1 | iex
+irm https://raw.githubusercontent.com/Omotolani98/monocron/v0.2.4/scripts/install/install-monocrond.ps1 | iex
 
 # monocron-runner (host agent)
-irm https://raw.githubusercontent.com/Omotolani98/monocron/v0.2.3/scripts/install/install-monocron-runner.ps1 | iex
+irm https://raw.githubusercontent.com/Omotolani98/monocron/v0.2.4/scripts/install/install-monocron-runner.ps1 | iex
 ```
 
 All scripts download the latest GitHub release for the current OS/architecture, extract the binary, and place it in the system or user path.
@@ -74,6 +74,44 @@ monocronctl schedule create backup "0 2 * * *" 10m /usr/local/bin/backup.sh zone
 monocronctl execution list
 monocronctl execution logs <execution-id>
 ```
+
+## Configuration
+
+`monocronctl` stores its config in the platform-specific user config directory:
+
+- Linux: `~/.config/monocronctl/config.json`
+- macOS: `~/Library/Application Support/monocronctl/config.json`
+- Windows: `%AppData%\monocronctl\config.json`
+
+The config file is created automatically on the first operational command. Override the path with `--config` or `MONOCRON_CONFIG`.
+
+`monocron-runner` uses a separate config file in the same config directory:
+
+- Linux / macOS: `<config-dir>/monocron/runner.json`
+- Windows: `<config-dir>\monocron\runner.json`
+
+It is also created automatically and can be overridden with `MONOCRON_RUNNER_CONFIG`.
+
+### Precedence
+
+Command-line flags > environment variables > config file > built-in defaults.
+
+## Updating
+
+Update all installed Monocron binaries to the latest release:
+
+```bash
+monocronctl update
+```
+
+Update to a specific version (dry run first):
+
+```bash
+monocronctl update --dry-run v0.2.4
+monocronctl update v0.2.4
+```
+
+The command updates `monocronctl`, `monocron-controller`, `monocron-runner`, and `monocrond` in the directory that contains `monocronctl` (override with `--bin-dir`). Updates are supported on Linux and macOS.
 
 ## Repository Layout
 
@@ -118,9 +156,10 @@ go test ./...
 
 ### monocron-runner
 
-- `MONOCRON_CONTROLLER_URL` — required controller URL
+- `MONOCRON_RUNNER_CONFIG` — config file path, default platform config dir (`~/.config/monocron/runner.json` on Linux)
+- `MONOCRON_CONTROLLER_URL` — required controller URL (overrides config file)
 - `MONOCRON_DAEMON_SOCKET` — default `/run/monocron/monocrond.sock`
-- `MONOCRON_RUNNER_STATE_PATH` — default `/var/lib/monocron/runner.state`
+- `MONOCRON_RUNNER_STATE_PATH` — default platform config dir (`~/.config/monocron/runner.state` on Linux)
 - `MONOCRON_RUNNER_TYPE` — default `bare_metal`
 - `MONOCRON_RUNNER_LABELS` — comma-separated `key=value` labels
 

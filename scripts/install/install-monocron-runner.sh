@@ -46,12 +46,12 @@ if [ "$(id -u)" -eq 0 ]; then
     groupadd --system "$GROUP" || true
     useradd --system --no-create-home --shell /usr/sbin/nologin --gid "$GROUP" "$USER"
   fi
-  mkdir -p /var/lib/monocron
-  chown -R "${USER}:${GROUP}" /var/lib/monocron
+  mkdir -p /var/lib/monocron /etc/monocron
+  chown -R "${USER}:${GROUP}" /var/lib/monocron /etc/monocron
 fi
 
 echo "${APP} installed to ${INSTALL_DIR}/${APP}"
-echo "Join the runner before starting:"
+echo "Edit /etc/monocron/runner.json or set MONOCRON_CONTROLLER_URL, then join:"
 echo "  monocronctl runner join <token>"
 echo "Then start the service:"
 echo "  sudo systemctl enable --now monocron-runner"
