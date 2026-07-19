@@ -59,7 +59,7 @@ func newUpdateTestServer(t *testing.T, version string) *httptest.Server {
 		h := sha256.Sum256(archive)
 		fmt.Fprintf(checksums, "%s  %s\n", hex.EncodeToString(h[:]), archiveName)
 	}
-	assets["checksums.txt"] = checksums.Bytes()
+	assets["monocron_0.0.0-test_checksums.txt"] = checksums.Bytes()
 
 	release := releaseInfo{
 		TagName: version,

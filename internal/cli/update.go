@@ -234,7 +234,7 @@ func (u *updater) fetchReleaseJSON(ctx context.Context, url string) (releaseInfo
 }
 
 func (u *updater) fetchChecksums(ctx context.Context, release releaseInfo) (map[string]string, error) {
-	asset, err := u.findAsset(release, "checksums.txt")
+	asset, err := u.findChecksumsAsset(release)
 	if err != nil {
 		return nil, err
 	}
@@ -243,6 +243,15 @@ func (u *updater) fetchChecksums(ctx context.Context, release releaseInfo) (map[
 		return nil, fmt.Errorf("download checksums: %w", err)
 	}
 	return parseChecksums(string(data)), nil
+}
+
+func (u *updater) findChecksumsAsset(release releaseInfo) (releaseAsset, error) {
+	for _, a := range release.Assets {
+		if a.Name == "checksums.txt" || strings.HasSuffix(a.Name, "_checksums.txt") {
+			return a, nil
+		}
+	}
+	return releaseAsset{}, fmt.Errorf("asset checksums.txt not found in release %s", release.TagName)
 }
 
 func (u *updater) findAsset(release releaseInfo, name string) (releaseAsset, error) {
