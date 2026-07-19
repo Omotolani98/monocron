@@ -270,21 +270,95 @@ func (s *DB) CreateRunner(ctx context.Context, runnerType contracts.RunnerType, 
 	return runner, plaintext, err
 }
 
+// EnrollRunner consumes an enrollment token and creates a runner in one transaction.
+// If runner creation fails, the token consumption is rolled back.
+func (s *DB) EnrollRunner(ctx context.Context, plaintextToken string) (contracts.Runner, string, error) {
+	hash := hashToken(plaintextToken)
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return contracts.Runner{}, "", err
+	}
+	defer tx.Rollback()
+
+	var tokenID uuid.UUID
+	var tokenLabels []byte
+	var expires time.Time
+	var consumed sql.NullTime
+	err = tx.QueryRowContext(ctx,
+		`SELECT id, labels, expires_at, consumed_at FROM enrollment_tokens WHERE token_hash=$1 FOR UPDATE`,
+		hash).Scan(&tokenID, &tokenLabels, &expires, &consumed)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return contracts.Runner{}, "", fmt.Errorf("invalid or expired token")
+		}
+		return contracts.Runner{}, "", err
+	}
+	if consumed.Valid {
+		return contracts.Runner{}, "", fmt.Errorf("token already consumed")
+	}
+	if time.Now().UTC().After(expires) {
+		return contracts.Runner{}, "", fmt.Errorf("token expired")
+	}
+
+	var labels contracts.Labels
+	_ = json.Unmarshal(tokenLabels, &labels)
+	if labels == nil {
+		labels = contracts.Labels{}
+	}
+
+	runnerType := contracts.RunnerTypeBareMetal
+	if t := labels["type"]; t != "" {
+		runnerType = contracts.RunnerType(t)
+		delete(labels, "type")
+	}
+
+	accessTokenPlaintext, err := generateToken()
+	if err != nil {
+		return contracts.Runner{}, "", err
+	}
+	runnerID := uuid.New()
+	now := time.Now().UTC()
+	labelsJSON, _ := json.Marshal(labels)
+	_, err = tx.ExecContext(ctx,
+		`INSERT INTO runners(id, name, runner_type, labels, state, access_token_hash, created_at, updated_at)
+		VALUES($1,$2,$3,$4,$5,$6,$7,$8)`,
+		runnerID, "", runnerType, labelsJSON, contracts.RunnerStatePending, hashToken(accessTokenPlaintext), now, now)
+	if err != nil {
+		return contracts.Runner{}, "", err
+	}
+
+	_, err = tx.ExecContext(ctx,
+		`UPDATE enrollment_tokens SET consumed_at=$1, consumed_by=$2 WHERE id=$3`,
+		now, runnerID, tokenID)
+	if err != nil {
+		return contracts.Runner{}, "", err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return contracts.Runner{}, "", err
+	}
+
+	return contracts.Runner{
+		ID:        runnerID,
+		Type:      runnerType,
+		Labels:    labels,
+		State:     contracts.RunnerStatePending,
+		CreatedAt: now,
+	}, accessTokenPlaintext, nil
+}
+
 // GetRunner returns a runner by ID.
 func (s *DB) GetRunner(ctx context.Context, id uuid.UUID) (contracts.Runner, error) {
-	var r contracts.Runner
-	var labels []byte
 	row := s.db.QueryRowContext(ctx,
 		`SELECT id, name, runner_type, labels, state, version, daemon_version, last_heartbeat, created_at
 		 FROM runners WHERE id=$1`, id)
-	err := row.Scan(&r.ID, &r.Name, &r.Type, &labels, &r.State, &r.Version, &r.DaemonVersion, &r.LastHeartbeat, &r.CreatedAt)
+	r, err := scanRunner(row)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return r, fmt.Errorf("runner not found")
+			return contracts.Runner{}, fmt.Errorf("runner not found")
 		}
-		return r, err
+		return contracts.Runner{}, err
 	}
-	_ = json.Unmarshal(labels, &r.Labels)
 	return r, nil
 }
 
@@ -310,12 +384,10 @@ func (s *DB) ListRunners(ctx context.Context, cursor string, limit int) ([]contr
 	var items []contracts.Runner
 	var last time.Time
 	for rows.Next() {
-		var r contracts.Runner
-		var labels []byte
-		if err := rows.Scan(&r.ID, &r.Name, &r.Type, &labels, &r.State, &r.Version, &r.DaemonVersion, &r.LastHeartbeat, &r.CreatedAt); err != nil {
+		r, err := scanRunner(rows)
+		if err != nil {
 			return nil, "", err
 		}
-		_ = json.Unmarshal(labels, &r.Labels)
 		items = append(items, r)
 		last = r.CreatedAt
 	}
@@ -324,6 +396,29 @@ func (s *DB) ListRunners(ctx context.Context, cursor string, limit int) ([]contr
 		next = last.Format(time.RFC3339Nano)
 	}
 	return items, next, rows.Err()
+}
+
+type runnerScanner interface {
+	Scan(dest ...any) error
+}
+
+// scanRunner scans a runner row, handling nullable version/daemon_version/last_heartbeat columns.
+func scanRunner(s runnerScanner) (contracts.Runner, error) {
+	var r contracts.Runner
+	var labels []byte
+	var version, daemonVersion sql.NullString
+	var lastHeartbeat sql.NullTime
+	err := s.Scan(&r.ID, &r.Name, &r.Type, &labels, &r.State, &version, &daemonVersion, &lastHeartbeat, &r.CreatedAt)
+	if err != nil {
+		return r, err
+	}
+	r.Version = version.String
+	r.DaemonVersion = daemonVersion.String
+	if lastHeartbeat.Valid {
+		r.LastHeartbeat = lastHeartbeat.Time
+	}
+	_ = json.Unmarshal(labels, &r.Labels)
+	return r, nil
 }
 
 // UpdateRunnerState updates runner state.

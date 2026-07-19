@@ -2,7 +2,9 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -108,21 +110,16 @@ func (s *Server) handleEnroll(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	labels, err := s.db.ConsumeEnrollmentToken(r.Context(), req.Token)
+	runner, accessToken, err := s.db.EnrollRunner(r.Context(), req.Token)
 	if err != nil {
-		writeError(w, http.StatusUnauthorized, err.Error())
-		return
-	}
-	// Default runner type from token labels or bare_metal
-	runnerType := contracts.RunnerTypeBareMetal
-	if t := labels["type"]; t != "" {
-		runnerType = contracts.RunnerType(t)
-		delete(labels, "type")
-	}
-	runner, accessToken, err := s.db.CreateRunner(r.Context(), runnerType, labels)
-	if err != nil {
-		s.log.Error("create runner", "error", err)
-		writeError(w, http.StatusInternalServerError, "could not create runner")
+		s.log.Error("enroll runner", "error", err)
+		status := http.StatusInternalServerError
+		msg := "could not create runner"
+		if errors.Is(err, sql.ErrNoRows) || isTokenError(err) {
+			status = http.StatusUnauthorized
+			msg = err.Error()
+		}
+		writeError(w, status, msg)
 		return
 	}
 	writeJSON(w, http.StatusCreated, contracts.EnrollResponse{RunnerID: runner.ID, AccessToken: accessToken})
@@ -500,6 +497,23 @@ func parseLimit(v string) int {
 
 func actor(r *http.Request) string {
 	return r.Header.Get("X-Actor")
+}
+
+// isTokenError reports whether err is an enrollment-token validation error.
+func isTokenError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	switch {
+	case strings.Contains(msg, "invalid or expired token"):
+		return true
+	case strings.Contains(msg, "token already consumed"):
+		return true
+	case strings.Contains(msg, "token expired"):
+		return true
+	}
+	return false
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

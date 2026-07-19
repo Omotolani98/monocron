@@ -45,17 +45,21 @@ func main() {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
+	exitCode := 0
 	select {
 	case sig := <-sigCh:
 		log.Info("received signal", "signal", sig)
 	case err := <-errCh:
 		log.Error("server error", "error", err)
+		exitCode = 1
 	}
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := srv.Close(shutdownCtx); err != nil {
 		log.Error("shutdown", "error", err)
+		exitCode = 1
 	}
 	log.Info("monocron-controller stopped")
+	os.Exit(exitCode)
 }

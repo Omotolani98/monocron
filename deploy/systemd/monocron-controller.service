@@ -11,8 +11,10 @@ Group=monocron
 EnvironmentFile=-/etc/monocron/controller.env
 ExecStart=/usr/local/bin/monocron-controller
 ExecStartPre=/bin/sh -c 'test -s /etc/monocron/controller.env || (echo "Missing /etc/monocron/controller.env" && exit 1)'
-Restart=always
+Restart=on-failure
 RestartSec=5
+StartLimitIntervalSec=60
+StartLimitBurst=3
 
 # Hardening
 NoNewPrivileges=true
