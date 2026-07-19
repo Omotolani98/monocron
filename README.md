@@ -9,15 +9,53 @@ A self-hosted scheduler for tasks on VMs, bare metals, or container environments
 - **monocrond** — host-local daemon that schedules and executes commands through a protected Unix socket.
 - **monocronctl** — administrative CLI for operators.
 
+## Install
+
+Each component can be installed with a one-liner. Scripts are hosted at `https://raw.githubusercontent.com/Omotolani98/monocron/dev/scripts/install/`.
+
+### Linux / macOS (curl)
+
+```bash
+# monocronctl (CLI)
+curl -fsSL https://raw.githubusercontent.com/Omotolani98/monocron/dev/scripts/install/install-monocronctl.sh | bash
+
+# monocron-controller (control plane)
+curl -fsSL https://raw.githubusercontent.com/Omotolani98/monocron/dev/scripts/install/install-monocron-controller.sh | bash
+
+# monocrond (host-local scheduler/executor)
+curl -fsSL https://raw.githubusercontent.com/Omotolani98/monocron/dev/scripts/install/install-monocrond.sh | bash
+
+# monocron-runner (host agent)
+curl -fsSL https://raw.githubusercontent.com/Omotolani98/monocron/dev/scripts/install/install-monocron-runner.sh | bash
+```
+
+### Windows (PowerShell)
+
+```powershell
+# monocronctl (CLI)
+irm https://raw.githubusercontent.com/Omotolani98/monocron/dev/scripts/install/install-monocronctl.ps1 | iex
+
+# monocron-controller (control plane)
+irm https://raw.githubusercontent.com/Omotolani98/monocron/dev/scripts/install/install-monocron-controller.ps1 | iex
+
+# monocrond (host-local scheduler/executor)
+irm https://raw.githubusercontent.com/Omotolani98/monocron/dev/scripts/install/install-monocrond.ps1 | iex
+
+# monocron-runner (host agent)
+irm https://raw.githubusercontent.com/Omotolani98/monocron/dev/scripts/install/install-monocron-runner.ps1 | iex
+```
+
+All scripts download the latest GitHub release for the current OS/architecture, extract the binary, and place it in the system or user path.
+
 ## Quick Start
 
 ```bash
 # 1. Start PostgreSQL and run the controller
 export MONOCRON_DATABASE_URL="postgres://user:pass@localhost/monocron?sslmode=disable"
-./monocron-controller
+monocron-controller
 
 # 2. Install monocrond on a target host and start it
-sudo ./monocrond
+sudo monocrond
 
 # 3. Log in from your workstation
 monocronctl login http://localhost:8080 admin-key
